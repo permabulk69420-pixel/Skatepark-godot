@@ -1,4 +1,4 @@
-# Walking around on foot (the house): the stick moves you, the right stick snaps you round, and the floor and walls are the same collision
+# Walking around on foot (the house): the stick moves you, the right stick turns you smoothly, and the floor and walls are the same collision
 # the skating uses. In the headset the play space moves under you and you still walk about in it for real; on a flat screen the mouse
 # looks and W A S D walk.
 class_name FootMode
@@ -11,7 +11,7 @@ const WALK_SPEED := 2.0
 const RISE_RATE := 3.0           # metres per second the feet follow a step up
 const FALL_RATE := 6.0
 const EYE := 1.65                # flat screen
-const SNAP_TURN := PI / 6.0
+const TURN_RATE := deg_to_rad(120.0)   # radians per second with the stick right over (a guess: change it to taste)
 const WALL_PROBES := [0.4, 1.0, 1.55]   # heights above the feet the walls are felt at (just above the biggest step)
 const SETTLE_FRAMES := 24
 
@@ -26,7 +26,6 @@ var placed := false
 var _settle := 0
 var _want_pos := Vector3.ZERO
 var _want_yaw := 0.0
-var _snap_latched := false
 var _hit := SkateWorld.Hit.new()
 var _ground := SkateWorld.Hit.new()
 
@@ -84,7 +83,7 @@ func turn_view(dx: float, dy: float) -> void:
 	look_pitch = clampf(look_pitch - dy * 0.003, -1.45, 1.45)
 
 
-# `move`: x sideways, y forward (−1..1). `turn`: the snap-turn stick (headset). Returns true while the player is on something solid.
+# `move`: x sideways, y forward (−1..1). `turn`: the turn stick (headset). Returns true while the player is on something solid.
 func update(dt: float, move: Vector2, turn: float) -> bool:
 	if not placed:
 		if vr:
@@ -96,17 +95,13 @@ func update(dt: float, move: Vector2, turn: float) -> bool:
 		camera.position = Vector3(0.0, EYE, 0.0)
 		camera.rotation = Vector3(look_pitch, look_yaw, 0.0)
 
-	# snap turn: about the head, so you stay where you are
-	if vr:
-		if absf(turn) < 0.3:
-			_snap_latched = false
-		elif absf(turn) > 0.7 and not _snap_latched:
-			_snap_latched = true
-			var at := body()
-			var spin := Basis(Vector3.UP, -signf(turn) * SNAP_TURN)
-			var origin := rig.global_position
-			rig.global_transform = Transform3D(spin * rig.global_transform.basis, at + spin * (origin - at))
-			rig.global_position.y = origin.y
+	# smooth turn: about the head, so you stay where you are
+	if vr and absf(turn) > 0.15:
+		var at := body()
+		var spin := Basis(Vector3.UP, -turn * TURN_RATE * dt)
+		var origin := rig.global_position
+		rig.global_transform = Transform3D(spin * rig.global_transform.basis, at + spin * (origin - at))
+		rig.global_position.y = origin.y
 
 	var start := body()
 	var delta := Vector3.ZERO
