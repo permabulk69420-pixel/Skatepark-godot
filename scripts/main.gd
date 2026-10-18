@@ -6,7 +6,7 @@ const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space t
 const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
 const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go home (or, at home, to the next level)
 const STEP_OFF_HOLD := 0.6       # seconds the right stick is held down (Q on a keyboard: a tap) to step off the board
-const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps on the board (and off it again) · hold L: next level\nHeadset: left stick walks, right stick turns, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A steps on the board · hold the right stick down to step off · hold the left menu button for the next level"
+const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps on the board (and off it again) · hold L: next level\nHeadset: left stick walks, right stick turns smoothly, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A steps on the board · hold the right stick down to step off · hold the left menu button for the next level"
 
 var level_id := ""               # a test can set it before the scene is added; `-- level=<id>` on the command line does too; empty: the house
 var info: Dictionary
