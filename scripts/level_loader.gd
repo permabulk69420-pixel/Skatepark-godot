@@ -23,6 +23,7 @@ static func load_level(path: String, parent: Node3D, decals := "") -> LevelLoade
 	level.root = packed.instantiate()
 	parent.add_child(level.root)
 	var collision_meshes: Array = []
+	var found_spawn := false
 	var stack: Array = [level.root]
 	while not stack.is_empty():
 		var node: Node = stack.pop_back()
@@ -35,8 +36,11 @@ static func load_level(path: String, parent: Node3D, decals := "") -> LevelLoade
 		elif role == "loop_path":
 			level.loop_nodes.append(node)
 		elif role == "spawn" and node is Node3D:
-			level.spawn_pos = (node as Node3D).global_position
-			level.spawn_heading = extras.get("heading_radians", 0.0)
+			# a level can have several (Foundry: the tower and the plaza); the game starts at the entrance, as the web build does
+			if node.name == "Spawn_Entrance" or not found_spawn:
+				level.spawn_pos = (node as Node3D).global_position
+				level.spawn_heading = extras.get("heading_radians", 0.0)
+				found_spawn = node.name == "Spawn_Entrance"
 		elif node is MeshInstance3D:
 			if role == "collision" or node.name.begins_with("COL_"):
 				collision_meshes.append(node)

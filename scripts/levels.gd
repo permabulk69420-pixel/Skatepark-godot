@@ -1,6 +1,7 @@
 # The levels the game can load. Each entry says where its model is and the few things that differ per level: the play area the skater
 # is kept inside (half-extents x/z around an optional centre cx/cz), the intro text, and `look` (optional) to override the lighting:
-# exposure, sun (intensity), sunColor, sunDirection ([x, y, z] towards the sun), hemisphere (fill), fog (colour), fogNear, fogFar.
+# toneMapping ("aces"; anything else is plain linear), exposure, sun (intensity), sunColor, sunDirection ([x, y, z] towards the sun),
+# hemisphere (fill), fog (colour), fogNear, fogFar.
 # Same layout as the web build's levels.js, so more levels can be added one entry at a time.
 class_name Levels
 extends RefCounted
@@ -12,6 +13,29 @@ const LEVELS := {
 		"blurb": "A photogrammetry scan of the real Gravesend skatepark · banks, ledges, rail, a quarter and stairs · scan by artfletch (CC-BY 4.0) · RIFT board",
 		"bounds": {"x": 29.0, "z": 22.5, "cx": 0.0, "cz": 0.0},
 		"camera_far": 280.0,
+		"look": {
+			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
+			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,
+		},
+	},
+	"breakwater": {
+		"name": "Breakwater",
+		"file": "res://assets/levels/breakwater.glb",
+		"blurb": "104 × 88 metres · Street, bowl and transition · RIFT board",
+		"bounds": {"x": 54.6, "z": 46.3, "cx": 0.0, "cz": 0.0},
+		"camera_far": 280.0,
+		"look": {
+			"toneMapping": "aces", "exposure": 0.85, "sun": 2.1, "sunColor": "#ffe6c4", "sunDirection": [-0.40, 0.73, -0.56],
+			"hemisphere": 0.48, "environment": 0.25, "fog": "#b8c6c5", "fogNear": 130.0, "fogFar": 290.0,
+		},
+	},
+	"foundry": {
+		"name": "Foundry",
+		"file": "res://assets/levels/foundry.glb",
+		"blurb": "80 × 72 metres · A 6.5 m start tower with a loop-the-loop, 7-, 5- and 3-stair sets, rails, hubbas, ledges, a funbox, a bowl and a mini ramp · RIFT board",
+		"bounds": {"x": 39.55, "z": 35.55, "cx": 0.0, "cz": 0.0},
+		"camera_far": 280.0,
+		"decals": "Construction|Paint",
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
 			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,
@@ -43,7 +67,7 @@ const LEVELS := {
 }
 
 const DEFAULT_LEVEL := "gravesend"
-const ORDER := ["gravesend", "megaramp", "flightline"]   # the order "next level" goes through
+const ORDER := ["gravesend", "foundry", "breakwater", "megaramp", "flightline"]   # the order "next level" goes through
 const SETTINGS := "user://settings.cfg"
 
 

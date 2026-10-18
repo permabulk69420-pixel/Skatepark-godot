@@ -261,7 +261,7 @@ func _build_environment(look: Dictionary) -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 1.2 * float(look.hemisphere) + 0.3
-	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES if look.get("toneMapping", "") == "aces" else Environment.TONE_MAPPER_LINEAR
 	env.tonemap_exposure = look.exposure
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
@@ -277,7 +277,7 @@ func _build_environment(look: Dictionary) -> void:
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.light_color = Color(look.sunColor)
-	sun.light_energy = 1.5
+	sun.light_energy = float(look.sun) * 1.5 / 3.4   # (3.4 is the sun the first levels were tuned with)
 	sun.shadow_enabled = false
 	add_child(sun)
 	sun.look_at_from_position(sun_dir * 100.0, Vector3.ZERO)
