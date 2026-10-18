@@ -1,18 +1,19 @@
-# Replays recorded inputs on the Gravesend collision mesh and checks every frame against what the web build's sim did with the same
+# Replays recorded inputs on each level's collision mesh and checks every frame against what the web build's sim did with the same
 # inputs: same mode on every frame, same events on the same frames, positions within a millimetre or so (32-bit vs 64-bit floats).
 #   godot --headless --path . -s res://tests/sim_replay.gd            all scenarios in tests/fixtures
-#   godot --headless --path . -s res://tests/sim_replay.gd -- ride    just those named
+#   godot --headless --path . -s res://tests/sim_replay.gd -- ride    just those named (any level)
 # Exit code 0 only if every scenario matches.
 #
 # Fixtures: <name>.input.json  { dt, frames: [[steer, drive, jump, grind, flip, stickX, stickY, lean, grabbing], …], actions?: [[frame, what], …] }  (what: "detach", "catch_clean", "catch_sketchy_reversed", "roll:<radians>")
 #           <name>.expected.json { trace: [[x, y, z, vx, vy, vz, heading, mode], …], events: [[frame, type], …] }
+# Gravesend's are in tests/fixtures, every other level's in tests/fixtures/<level id>.
 # They were recorded from the web build's sim.js on this level's collision triangles as Godot imports them (see tests/reference),
 # so the check is like for like. A scenario that rolls off a deck edge on a knife-edge frame can differ by a frame in any
 # implementation (the web sim itself loses sync with itself when its start is nudged by two micrometres), so the scenarios here
 # are ones that are stable.
 extends SceneTree
 
-const LEVEL := "res://assets/levels/gravesend.glb"
+const LEVEL_IDS := ["gravesend", "megaramp", "flightline"]
 const FIXTURES := "res://tests/fixtures"
 const MODES := ["ground", "air", "grind", "bail", "loop"]
 const POS_TOLERANCE := 0.01   # metres
@@ -40,37 +41,53 @@ func read_json(path: String) -> Dictionary:
 	return JSON.parse_string(FileAccess.get_file_as_string(path))
 
 
+func fixtures_dir(level_id: String) -> String:
+	return FIXTURES if level_id == "gravesend" else "%s/%s" % [FIXTURES, level_id]
+
+
 func run() -> void:
-	var names: Array = Array(OS.get_cmdline_user_args())
-	if names.is_empty():
-		for file in DirAccess.get_files_at(FIXTURES):
-			if file.ends_with(".input.json"):
-				names.append(file.trim_suffix(".input.json"))
-		names.sort()
-
+	var wanted: Array = Array(OS.get_cmdline_user_args())
 	await process_frame
-	var holder := Node3D.new()
-	root.add_child(holder)
-	var level := LevelLoader.load_level(LEVEL, holder)
-	await process_frame
-	await physics_frame
-	await physics_frame
-	var world := SkateWorld.new(holder.get_world_3d().direct_space_state)
-	var paths := GrindPath.parse(level.grind_nodes)
-
 	var failed := 0
-	for scenario_name in names:
-		if not replay(String(scenario_name), level, world, paths):
-			failed += 1
-	print("\n%d of %d scenarios match the web build" % [names.size() - failed, names.size()])
+	var total := 0
+	for level_id in LEVEL_IDS:
+		var dir: String = fixtures_dir(level_id)
+		var names: Array = []
+		for file in DirAccess.get_files_at(dir):
+			var scenario_name: String = file.trim_suffix(".input.json")
+			if file.ends_with(".input.json") and (wanted.is_empty() or scenario_name in wanted):
+				names.append(scenario_name)
+		if names.is_empty():
+			continue
+		names.sort()
+		print("\n== %s" % level_id)
+		var info: Dictionary = Levels.LEVELS[level_id]
+		var holder := Node3D.new()
+		root.add_child(holder)
+		var level := LevelLoader.load_level(info.file, holder)
+		await process_frame
+		await physics_frame
+		await physics_frame
+		var world := SkateWorld.new(holder.get_world_3d().direct_space_state)
+		var paths := GrindPath.parse(level.grind_nodes)
+		for scenario_name in names:
+			total += 1
+			if not replay(dir, String(scenario_name), level, world, paths, info.bounds):
+				failed += 1
+		# the next level must not share a physics world with this one's collision
+		root.remove_child(holder)
+		holder.free()
+		await physics_frame
+
+	print("\n%d of %d scenarios match the web build" % [total - failed, total])
 	quit(0 if failed == 0 else 1)
 
 
-func replay(scenario_name: String, level: LevelLoader, world: SkateWorld, paths: Array[GrindPath]) -> bool:
-	var scenario := read_json("%s/%s.input.json" % [FIXTURES, scenario_name])
-	var expected := read_json("%s/%s.expected.json" % [FIXTURES, scenario_name])
+func replay(dir: String, scenario_name: String, level: LevelLoader, world: SkateWorld, paths: Array[GrindPath], bounds: Dictionary) -> bool:
+	var scenario := read_json("%s/%s.input.json" % [dir, scenario_name])
+	var expected := read_json("%s/%s.expected.json" % [dir, scenario_name])
 	var rand := Mulberry.new()
-	var sim := Skater.new(world, paths, [] as Array[LoopPath], {"x": 29.0, "z": 22.5, "cx": 0.0, "cz": 0.0}, true)
+	var sim := Skater.new(world, paths, [] as Array[LoopPath], bounds, true)
 	sim.random_fn = rand.next
 	sim.set_spawn(level.spawn_pos, level.spawn_heading)
 	var events: Array = []

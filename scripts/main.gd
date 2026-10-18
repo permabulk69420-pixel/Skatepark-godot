@@ -2,10 +2,11 @@
 # and the Quest controllers drive it; otherwise it plays on a flat screen with a keyboard or gamepad.
 extends Node3D
 
-const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · hold R: back to the entrance · Z stance\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance, hold X entrance"
+const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · hold R: back to the entrance · Z stance · hold L: next level\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance, hold X entrance\nHeadset: hold the left menu button for the next level"
 const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
+const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go to the next level
 
-var level_id := Levels.DEFAULT_LEVEL
+var level_id := Levels.saved()   # a test can set it before the scene is added; `-- level=<id>` on the command line does too
 var info: Dictionary
 var vr := false
 var rig: Node3D
@@ -29,9 +30,14 @@ var hand_balance := HandBalance.new()
 var input := SkateInput.new()
 var ready_to_play := false
 var dragging := false
+var held_level_switch := 0.0
+var switching := false
 
 
 func _ready() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("level=") and Levels.LEVELS.has(arg.substr(6)):
+			level_id = arg.substr(6)
 	info = Levels.LEVELS[level_id]
 	vr = _start_xr()
 	_build_environment(info.look)
@@ -66,7 +72,7 @@ func _ready() -> void:
 	add_child(loading_layer)
 	await get_tree().process_frame
 
-	level = LevelLoader.load_level(info.file, self)
+	level = LevelLoader.load_level(info.file, self, info.get("decals", ""))
 	if level == null:
 		loading.text = "The park could not load."
 		push_error("Could not load " + info.file)
@@ -129,9 +135,18 @@ static func _make_controller(tracker: StringName) -> XRController3D:
 
 
 func _process(delta: float) -> void:
-	if not ready_to_play:
+	if not ready_to_play or switching:
 		return
 	var dt := minf(delta, 0.05)
+	# Hold the left menu button (L on a keyboard) to go on to the next level; the game remembers it for next time.
+	var level_key := Input.is_key_pressed(KEY_L) or (vr and left_controller.is_button_pressed("menu_button"))
+	held_level_switch = held_level_switch + dt if level_key else 0.0
+	if held_level_switch > LEVEL_SWITCH_HOLD:
+		switching = true
+		level_id = Levels.next_after(level_id)
+		Levels.save(level_id)
+		get_tree().reload_current_scene()
+		return
 	# Holding both grips must not re-centre you while you are in the air.
 	input.block_recenter = sim.mode == Skater.Mode.AIR or grab.holding()
 	var command := input.poll(dt)

@@ -1,13 +1,21 @@
-// Records a scenario: the inputs, and what the web build's sim did with them, into tests/fixtures.
-//   WEB_REPO=/path/to/Skatepark- node tests/reference/record.mjs <level.glb> <collision.bin|-> <name> [name …]
-// <name> is an existing tests/fixtures/<name>.input.json (re-records its expected trace), or one of: ride, rail, ledge, random:<seed>.
-// <collision.bin>: from `godot --headless --path . -s res://tests/reference/dump_collision.gd -- collision.bin`.
+// Records a scenario: the inputs, and what the web build's sim did with them, into tests/fixtures (Gravesend's) or
+// tests/fixtures/<level id>/ (every other level's).
+//   WEB_REPO=/path/to/Skatepark- node tests/reference/record.mjs <level id> <collision.bin|-> <name> [name …]
+// <name> is an existing fixture's name (re-records its expected trace), or one of: ride, rail, ledge, random:<seed>, or a scenario listed
+// for that level in LEVEL_SCENARIOS below.
+// <collision.bin>: from `godot --headless --path . -s res://tests/reference/dump_collision.gd -- <level id> collision.bin`.
 import fs from 'node:fs';
 import { buildWorld, run, mulberry } from './lib.mjs';
 
-const [levelPath, collisionBin, ...names] = process.argv.slice(2);
-const FIXTURES = new URL('../fixtures/', import.meta.url).pathname;
-const BOUNDS = { x: 29, z: 22.5, cx: 0, cz: 0 };   // Gravesend, from scripts/levels.gd
+const [levelId, collisionBin, ...names] = process.argv.slice(2);
+const ROOT = new URL('../../', import.meta.url).pathname;
+const FIXTURES = new URL(levelId === 'gravesend' ? '../fixtures/' : `../fixtures/${levelId}/`, import.meta.url).pathname;
+fs.mkdirSync(FIXTURES, { recursive: true });
+// The level's model and play area, read from scripts/levels.gd so there is one place they are written down.
+const entry = fs.readFileSync(`${ROOT}scripts/levels.gd`, 'utf8').split(new RegExp(`^\t"${levelId}": \{`, 'm'))[1].split(/^\t\},/m)[0];
+const levelPath = ROOT + entry.match(/"file": "res:\/\/([^"]+)"/)[1];
+const b = JSON.parse(entry.match(/"bounds": (\{[^}]*\})/)[1]);
+const BOUNDS = { x: b.x, z: b.z, cx: b.cx, cz: b.cz };
 const DT = 1 / 72;
 
 // A timeline of [seconds, inputs] into per-frame inputs. Left stick = steer/drive, which is also the trick stick unless given.
@@ -44,6 +52,30 @@ for (const [name, rad] of [['clean', 2 * Math.PI], ['front', -2 * Math.PI], ['do
 GENERATED.boardoff_catch = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }], [0.2, { grab: 1, act: 'detach' }], [0.25, { grab: 1 }], [0.05, { grab: 1, act: 'catch_clean' }], [0.8, { drive: 1 }], [2]]);
 GENERATED.boardoff_bail = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }], [0.2, { grab: 1, act: 'detach' }], [3]]);
 GENERATED.boardoff_reversed = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }], [0.2, { grab: 1, act: 'detach' }], [0.2, { grab: 1 }], [0.05, { grab: 1, act: 'catch_sketchy_reversed' }], [0.8, { drive: 1 }], [2]]);
+// Scenarios that only make sense on one level.
+const LEVEL_SCENARIOS = {
+  flightline: {
+    // straight down from the start tower: the first gap (a bail, the respawn at the top), then again over the first gap and on to the second
+    fl_run: () => timeline([[0.5], [24, { drive: 1 }]]),
+  },
+  megaramp: {
+    // straight down the roll-in, over the big gap, up the vert quarter (the air over the lip holds you over the pit) and back down
+    mega_run: () => timeline([[0.5], [15.5, { drive: 1 }]]),
+    // the same, steering right on the run-out so the quarter is met at an angle: press grind near the top and the board latches onto the
+    // coping (the magnet), grinds along it and drops off the end
+    mega_coping: () => timeline([[0.5], [8.4, { drive: 1 }], [0.9, { drive: 1, steer: 1 }], [0.8, { drive: 1 }], [0.4, { drive: 1, grind: 1 }], [4, { drive: 0.3 }]]),
+    // a slower catch: a long grind that runs the speed out of the coping
+    mega_coping_slow: () => timeline([[0.5], [8.4, { drive: 1 }], [0.5, { drive: 1, steer: 1 }], [1.3, { drive: 1 }], [0.4, { drive: 1, grind: 1 }], [5, { drive: 0.3 }]]),
+    // left unattended on the coping the balance meter dumps you
+    mega_coping_bail: () => timeline([[0.5], [8.4, { drive: 1 }], [0.6, { drive: 1, steer: 1 }], [1.2, { drive: 1 }], [0.4, { drive: 1, grind: 1 }], [5, { drive: 0.3 }]]),
+    // ollie out of the coping grind
+    mega_coping_pop: () => timeline([[0.5], [8.4, { drive: 1 }], [0.9, { drive: 1, steer: 1 }], [0.8, { drive: 1 }], [0.4, { drive: 1, grind: 1 }], [0.1, { drive: 1, jump: 1 }], [3, { drive: 1 }]]),
+    // an ollie on the wall of the quarter holding forward: committed to going over the top
+    mega_lip_ollie: () => timeline([[0.5], [9.8, { drive: 1 }], [0.3, { drive: 1, jump: 1 }], [6, { drive: 1 }]]),
+    // the same ollie with nothing held: stays over the pit
+    mega_lip_stay: () => timeline([[0.5], [9.8, { drive: 1 }], [0.3, { drive: 1, jump: 1 }], [6]]),
+  },
+};
 const STICKS = [[-1, 0], [1, 0], [0, 1], [-0.8, 0.8], [0.8, 0.8], [0, -1], [-1, -0.4]];
 function random(seed) {
   const rnd = mulberry(seed);
@@ -73,7 +105,7 @@ const ctx = await buildWorld(levelPath, collisionBin === '-' ? null : collisionB
 for (const name of names) {
   const file = `${FIXTURES}${name}.input.json`;
   const scenario = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8'))
-    : name.startsWith('random:') ? random(Number(name.slice(7))) : GENERATED[name]();
+    : name.startsWith('random:') ? random(Number(name.slice(7))) : (LEVEL_SCENARIOS[levelId]?.[name] ?? GENERATED[name])();
   const out = name.replace(':', '');
   fs.writeFileSync(`${FIXTURES}${out}.input.json`, JSON.stringify(scenario));
   const { trace, events } = run(ctx, scenario, BOUNDS);

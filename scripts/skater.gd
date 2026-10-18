@@ -571,7 +571,7 @@ func ground_step(h: float) -> void:
 	if pop_request >= 0.0:
 		pop(pop_request)
 		return
-	if try_coping_magnet(pos):
+	if try_coping_magnet(pos, true):
 		return
 
 	var lat := vel + f * (-s)
@@ -1519,7 +1519,9 @@ func try_grind(np: Vector3, h: float) -> bool:
 # Press the grind button near the top of a ramp or bowl wall and the board latches onto the coping and grinds along it: from the wall
 # while it is still rolling up, from the air, or from the deck, at whatever angle it arrives. It needs real speed along the lip
 # (arriving square-on and slow, there is nothing to grind along).
-func try_coping_magnet(np: Vector3) -> bool:
+# np_is_pos: np is the board's own position (the ground step asks with it). The web build passed that very object, so the catch moved it
+# onto the rail with nothing to blend (start_grind keeps that).
+func try_coping_magnet(np: Vector3, np_is_pos := false) -> bool:
 	if not require_grind or grind_arm <= 0.0:
 		return false
 	var hv := heading_vec(heading)
@@ -1562,7 +1564,7 @@ func try_coping_magnet(np: Vector3) -> bool:
 	var theta := acos(clampf(absf(hv.x * best.seg.dir_h.x + hv.z * best.seg.dir_h.y), 0.0, 1.0))
 	best.mode = "truck" if theta <= T.magnetTruckAngle else "slide"
 	best.theta = theta
-	return start_grind(best, np)
+	return start_grind(best, np, np_is_pos)
 
 
 # Which side of this stretch of coping is the drop (lower ground), as a horizontal unit vector (x, z); cached on the segment.
@@ -1603,7 +1605,7 @@ func rolling_into_pit(seg: GrindPath.Segment, _np: Vector3) -> bool:
 	return vel.x * pit.x + vel.z * pit.y > T.stallIntoPit
 
 
-func start_grind(c: Dictionary, np: Vector3) -> bool:
+func start_grind(c: Dictionary, np: Vector3, np_is_pos := false) -> bool:
 	var path: GrindPath = c.path
 	var seg: GrindPath.Segment = c.seg
 	var t: float = c.t
@@ -1671,6 +1673,8 @@ func start_grind(c: Dictionary, np: Vector3) -> bool:
 
 	# Where the board would sit if it were already perfectly on the rail, to blend the catch instead of teleporting.
 	place_on_rail(g, 0.0)
+	if np_is_pos:
+		np = pos   # (the web build's np was this very vector, so it now reads as the spot on the rail)
 	g.snap = np - pos
 	# Sloppy entries start the meter off-centre: lateral error and angle error both count.
 	var limit: float = T.truckLateral if gmode == "truck" else (T.stallLateral if path.kind == "coping" else T.slideLateral)

@@ -41,6 +41,7 @@ export async function buildWorld(levelPath, collisionBin = null) {
     if (extras.role === 'collision' || node.getName().startsWith('COL_')) {
       let mesh;
       if (collisionBin) {
+        if (colliders.length) continue;   // the dump holds every collision mesh's triangles: one collider stands for all of them
         // Godot's faces are clockwise; three.js wants counter-clockwise, so swap the last two vertices of each triangle back.
         const raw = fs.readFileSync(collisionBin);
         const f = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
