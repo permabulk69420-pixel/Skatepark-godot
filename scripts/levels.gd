@@ -7,12 +7,11 @@ class_name Levels
 extends RefCounted
 
 const LEVELS := {
-	# The house: a place to walk around, with the TV that picks the level. `blockout` builds a plain stand-in (scripts/hub_blockout.gd) until
-	# the real model is at `file`.
+	# The house: a place to walk around, with the TV that picks the level. If there is no model at `file`, a plain stand-in is built instead
+	# (scripts/hub_blockout.gd).
 	"hub": {
 		"name": "Home",
 		"file": "res://assets/levels/hub.glb",
-		"blockout": true,
 		"blurb": "Walk to the TV, pick up the remote, choose a level · the half pipe is out the back · hold the left menu button to come back here",
 		"bounds": {"x": 20.0, "z": 21.0, "cx": 0.0, "cz": -9.0},
 		"camera_far": 400.0,

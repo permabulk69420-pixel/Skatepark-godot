@@ -11,6 +11,7 @@ const FLAT_PICK_DISTANCE := 3.0
 const STICK_ON := 0.7
 const STICK_OFF := 0.3
 const PICTURES := "res://assets/previews/%s.jpg"
+const REST := Vector3(0.0, 0.011, 0.0)   # the remote lies on the table, not in it
 
 var screen: MeshInstance3D
 var spot: Node3D                 # where the remote lies when nobody has it
@@ -35,6 +36,7 @@ func _init(p_screen: MeshInstance3D, p_spot: Node3D, parent: Node, start_id: Str
 	channel = maxi(0, Levels.PLAYABLE.find(start_id))
 	remote = _make_remote()
 	spot.add_child(remote)
+	remote.position = REST
 
 	viewport = SubViewport.new()
 	viewport.size = Vector2i(640, 360)
@@ -151,5 +153,5 @@ func update(pointers: Array) -> void:
 func _put_down() -> void:
 	holder = ""
 	remote.reparent(spot, false)
-	remote.transform = Transform3D.IDENTITY
+	remote.transform = Transform3D(Basis.IDENTITY, REST)
 	_show()
