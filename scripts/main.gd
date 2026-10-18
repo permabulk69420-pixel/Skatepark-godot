@@ -78,7 +78,7 @@ func _ready() -> void:
 	sim.set_spawn(level.spawn_pos, level.spawn_heading)
 	sim.event.connect(_on_sim_event)
 
-	hud = Hud.new(self, sim, info.name, CONTROLS_HINT)
+	hud = Hud.new(self, sim, info.name, CONTROLS_HINT + "\n\n" + info.blurb)
 	rig_control = PlayerRig.new(rig, camera, sim, hud.fade_rect, vr)
 	if vr:
 		vr_gauge = VrGauge.new(rig)
