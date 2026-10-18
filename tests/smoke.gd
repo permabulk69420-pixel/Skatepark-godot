@@ -28,6 +28,7 @@ func _init() -> void:
 
 func run() -> void:
 	var main := (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.level_id = "gravesend"   # (not whichever level was left on last; `level=<id>` after -- picks another)
 	root.add_child(main)
 	var guard := 0
 	while not main.ready_to_play and guard < 2000:
