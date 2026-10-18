@@ -49,12 +49,12 @@ jobs:
       - name: Godot and its Android export templates
         run: |
           base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
-          curl -fsSL --retry 3 -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          unzip -q godot.zip
-          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
-          curl -fsSL --retry 3 -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/godot.zip" "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP"
+          sudo mv "$RUNNER_TEMP/Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/templates.tpz" "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
-          unzip -q -j templates.tpz 'templates/android_*' templates/version.txt -d ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          unzip -q -j "$RUNNER_TEMP/templates.tpz" 'templates/android_*' templates/version.txt -d ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p ~/.config/godot
           cat > ~/.config/godot/editor_settings-4.4.tres <<SETTINGS
           [gd_resource type="EditorSettings" format=3]
@@ -72,10 +72,11 @@ jobs:
 
       - name: OpenXR Vendors plugin (the Meta Quest loader)
         run: |
-          curl -fsSL --retry 3 -o vendors.zip "https://github.com/GodotVR/godot_openxr_vendors/releases/download/${VENDORS_VERSION}/godotopenxrvendorsaddon.zip"
-          unzip -q vendors.zip 'asset/addons/godotopenxrvendors/*' -d vendors
+          # unpacked outside the project: a second copy inside it would make Godot load the plugin twice
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/vendors.zip" "https://github.com/GodotVR/godot_openxr_vendors/releases/download/${VENDORS_VERSION}/godotopenxrvendorsaddon.zip"
+          unzip -q "$RUNNER_TEMP/vendors.zip" 'asset/addons/godotopenxrvendors/*' -d "$RUNNER_TEMP/vendors"
           mkdir -p addons
-          cp -r vendors/asset/addons/godotopenxrvendors addons/
+          cp -r "$RUNNER_TEMP/vendors/asset/addons/godotopenxrvendors" addons/
 
       - name: Android build template
         run: |
