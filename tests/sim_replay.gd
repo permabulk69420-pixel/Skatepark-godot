@@ -4,7 +4,7 @@
 #   godot --headless --path . -s res://tests/sim_replay.gd -- ride    just those named
 # Exit code 0 only if every scenario matches.
 #
-# Fixtures: <name>.input.json  { dt, frames: [[steer, drive, jump, grind, flip, stickX, stickY, lean], …] }
+# Fixtures: <name>.input.json  { dt, frames: [[steer, drive, jump, grind, flip, stickX, stickY, lean, grabbing], …], actions?: [[frame, what], …] }  (what: "detach", "catch_clean", "catch_sketchy_reversed", "roll:<radians>")
 #           <name>.expected.json { trace: [[x, y, z, vx, vy, vz, heading, mode], …], events: [[frame, type], …] }
 # They were recorded from the web build's sim.js on this level's collision triangles as Godot imports them (see tests/reference),
 # so the check is like for like. A scenario that rolls off a deck edge on a knife-edge frame can differ by a frame in any
@@ -80,6 +80,7 @@ func replay(scenario_name: String, level: LevelLoader, world: SkateWorld, paths:
 
 	var dt: float = scenario.dt
 	var frames: Array = scenario.frames
+	var actions: Array = scenario.get("actions", [])   # things the hands do to the sim: [frame, "detach" | "catch_clean" | "catch_sketchy_reversed"]
 	var trace: Array = expected.trace
 	var max_pos := 0.0
 	var max_vel := 0.0
@@ -96,6 +97,20 @@ func replay(scenario_name: String, level: LevelLoader, world: SkateWorld, paths:
 		cmd.flip = f[4] != 0
 		cmd.trick_stick = Vector2(f[5], f[6])
 		cmd.lean = f[7]
+		cmd.grabbing = f.size() > 8 and f[8] != 0
+		for a in actions:
+			if int(a[0]) != i:
+				continue
+			match a[1]:
+				"detach":
+					sim.detach_board()
+				"catch_clean":
+					sim.catch_board("clean", false)
+				"catch_sketchy_reversed":
+					sim.catch_board("sketchy", true)
+				_:
+					if String(a[1]).begins_with("roll:"):
+						sim.body_roll = float(String(a[1]).substr(5))   # as if a flip had already turned you this far
 		sim.update(cmd, dt)
 		var e: Array = trace[i]
 		var dp := (sim.pos - Vector3(e[0], e[1], e[2])).length()

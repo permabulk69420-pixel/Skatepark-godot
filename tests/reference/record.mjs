@@ -11,11 +11,17 @@ const BOUNDS = { x: 29, z: 22.5, cx: 0, cz: 0 };   // Gravesend, from scripts/le
 const DT = 1 / 72;
 
 // A timeline of [seconds, inputs] into per-frame inputs. Left stick = steer/drive, which is also the trick stick unless given.
-const timeline = (list) => ({
-  dt: DT,
-  frames: list.flatMap(([dur, o = {}]) => Array.from({ length: Math.max(1, Math.round(dur / DT)) }, () =>
-    [o.steer ?? 0, o.drive ?? 0, o.jump ?? 0, o.grind ?? 0, o.flip ?? 0, o.tsx ?? (o.steer ?? 0), o.tsy ?? -(o.drive ?? 0), o.lean ?? (o.steer ?? 0)])),
-});
+// An entry's `grab` is the hands holding the board; `act` is something the hands do to the sim at the start of it (see lib.mjs run()).
+const timeline = (list) => {
+  const frames = [], actions = [];
+  for (const [dur, o = {}] of list) {
+    if (o.act) actions.push([frames.length, o.act]);
+    for (let i = 0; i < Math.max(1, Math.round(dur / DT)); i++) {
+      frames.push([o.steer ?? 0, o.drive ?? 0, o.jump ?? 0, o.grind ?? 0, o.flip ?? 0, o.tsx ?? (o.steer ?? 0), o.tsy ?? -(o.drive ?? 0), o.lean ?? (o.steer ?? 0), o.grab ?? 0]);
+    }
+  }
+  return actions.length ? { dt: DT, frames, actions } : { dt: DT, frames };
+};
 
 const GENERATED = {
   // rolling, carving, ollies, a kickflip, a manual, a shove-it and braking
@@ -27,6 +33,17 @@ const GENERATED = {
   // the same, but a longer run-up to the ledge on the box
   ledge: () => timeline([[0.5], [0.5, { steer: -0.6, drive: 1 }], [1.8, { drive: 1 }], [0.9, { drive: 1 }], [0.18, { jump: 1, drive: 1 }], [0.1, { drive: 1 }], [0.12, { drive: 1, grind: 1 }], [1.5, { drive: 0.3 }]]),
 };
+// A run-up, then an ollie off the flat: the base for the air scenarios (the air starts after the 0.2 s release).
+const ollie = [[0.5], [3, { drive: 1 }], [0.4, { jump: 1, drive: 1 }]];
+GENERATED.backflip = () => timeline([...ollie, [0.05, { drive: 1 }], [1.1, { grab: 1, drive: -1, tsy: 1 }], [0.3, {}], [2]]);
+GENERATED.frontflip = () => timeline([...ollie, [0.05, { drive: 1 }], [1.1, { grab: 1, drive: 1, tsy: -1 }], [0.3, {}], [2]]);
+// land after a body flip of this many radians (a full turn is clean, a bit off is sketchy, further is a bail)
+for (const [name, rad] of [['clean', 2 * Math.PI], ['front', -2 * Math.PI], ['double', 4 * Math.PI], ['sketchy', 2 * Math.PI + 0.9], ['bail', 2 * Math.PI + 1.6]]) {
+  GENERATED['bodyroll_' + name] = () => timeline([...ollie, [0.05, { drive: 1, act: `roll:${rad}` }], [1.5, { drive: 1 }], [2]]);
+}
+GENERATED.boardoff_catch = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }], [0.2, { grab: 1, act: 'detach' }], [0.25, { grab: 1 }], [0.05, { grab: 1, act: 'catch_clean' }], [0.8, { drive: 1 }], [2]]);
+GENERATED.boardoff_bail = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }], [0.2, { grab: 1, act: 'detach' }], [3]]);
+GENERATED.boardoff_reversed = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }], [0.2, { grab: 1, act: 'detach' }], [0.2, { grab: 1 }], [0.05, { grab: 1, act: 'catch_sketchy_reversed' }], [0.8, { drive: 1 }], [2]]);
 const STICKS = [[-1, 0], [1, 0], [0, 1], [-0.8, 0.8], [0.8, 0.8], [0, -1], [-1, -0.4]];
 function random(seed) {
   const rnd = mulberry(seed);
