@@ -72,8 +72,9 @@ export function mulberry(seed = 12345) {
   return () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-// frames: [[steer, drive, jump, grind, flip, stickX, stickY, lean], …]. bounds: the level's play area from levels.gd.
-export function run(ctx, { dt, frames }, bounds) {
+// frames: [[steer, drive, jump, grind, flip, stickX, stickY, lean, grabbing], …]; actions: [[frame, "detach" | "catch_clean" |
+// "catch_sketchy_reversed" | "roll:<radians>"], …] are things the hands would do to the sim before that frame's update. bounds: the level's play area.
+export function run(ctx, { dt, frames, actions = [] }, bounds) {
   const events = [];
   let frame = 0;
   const sim = new Skater({ world: ctx.world, paths: ctx.paths, loops: [], bounds, requireGrind: true, random: mulberry(), onEvent: (type) => events.push([frame, type]) });
@@ -81,8 +82,15 @@ export function run(ctx, { dt, frames }, bounds) {
   events.length = 0;
   const trace = [];
   for (frame = 0; frame < frames.length; frame++) {
-    const [steer, drive, jump, grind, flip, tsx, tsy, lean] = frames[frame];
-    sim.update({ steer, drive, jump: !!jump, grind: !!grind, flip: !!flip, trickStick: { x: tsx, y: tsy }, lean, grabbing: false, detach: false, bodyY: undefined }, dt);
+    const [steer, drive, jump, grind, flip, tsx, tsy, lean, grabbing] = frames[frame];
+    for (const [at, what] of actions) {
+      if (at !== frame) continue;
+      if (what === 'detach') sim.detachBoard();
+      else if (what === 'catch_clean') sim.catchBoard('clean', false);
+      else if (what === 'catch_sketchy_reversed') sim.catchBoard('sketchy', true);
+      else if (what.startsWith('roll:')) sim.bodyRoll = Number(what.slice(5));   // as if a flip had already turned you this far
+    }
+    sim.update({ steer, drive, jump: !!jump, grind: !!grind, flip: !!flip, trickStick: { x: tsx, y: tsy }, lean, grabbing: !!grabbing, detach: false, bodyY: undefined }, dt);
     trace.push([sim.pos.x, sim.pos.y, sim.pos.z, sim.vel.x, sim.vel.y, sim.vel.z, sim.heading, MODES.indexOf(sim.mode)].map((v, i) => (i < 7 ? Math.round(v * 1e6) / 1e6 : v)));
   }
   return { trace, events };

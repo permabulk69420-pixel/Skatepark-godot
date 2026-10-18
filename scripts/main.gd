@@ -22,6 +22,9 @@ var sfx: Sfx
 var music: Music
 var haptics: Haptics
 var vr_gauge: VrGauge
+var hands: VrHands
+var grab: BoardGrab
+var detach_was := false
 var hand_balance := HandBalance.new()
 var input := SkateInput.new()
 var ready_to_play := false
@@ -84,6 +87,9 @@ func _ready() -> void:
 		vr_gauge = VrGauge.new(rig)
 	var model := (load("res://assets/board/skateboard.glb") as PackedScene).instantiate() as Node3D
 	board_view = BoardView.new(self, model)
+	hands = VrHands.new({"left": left_controller, "right": right_controller} if vr else {})
+	grab = BoardGrab.new(hands, board_view.root, camera, haptics)
+	grab.event.connect(_on_sim_event)
 	sfx = Sfx.new(world)
 	sfx.name = "Sfx"
 	add_child(sfx)
@@ -127,16 +133,16 @@ func _process(delta: float) -> void:
 		return
 	var dt := minf(delta, 0.05)
 	# Holding both grips must not re-centre you while you are in the air.
-	input.block_recenter = sim.mode == Skater.Mode.AIR
+	input.block_recenter = sim.mode == Skater.Mode.AIR or grab.holding()
 	var command := input.poll(dt)
+	command.grabbing = grab.holding()   # grabbing lets the stick flip you over (backflip / frontflip)
 	if vr:
 		command.body_y = camera.position.y if rig_control.calibrated else NAN
 		# In the headset the hands balance grinds and manuals: right hand up pushes the meter right, left hand up pushes it left. The
 		# neutral hand position is only learned while rolling relaxed on the ground, not through a crouch, pop or flight.
 		var relaxed := sim.mode == Skater.Mode.GROUND and sim.manual == null and sim.grounded_time > 0.4 and absf(sim.crouch) < 0.06 and not command.jump
-		var left = left_controller.position if left_controller.get_has_tracking_data() else null
-		var right = right_controller.position if right_controller.get_has_tracking_data() else null
-		command.lean = hand_balance.update(dt, left, right, sim.balance != null, relaxed)
+		var grips := hands.grip_positions()
+		command.lean = hand_balance.update(dt, grips.left, grips.right, sim.balance != null, relaxed)
 		# On rails, reverse the hand tilt: raising the right hand corrects left, and vice versa.
 		if sim.mode == Skater.Mode.GRIND:
 			command.lean *= -1.0
@@ -156,6 +162,17 @@ func _process(delta: float) -> void:
 	rig_control.update(dt)
 	level.lods.update(camera.global_position)
 	board_view.update(sim, dt)
+	var airborne := sim.mode == Skater.Mode.AIR and sim.flip == null and sim.shuv == null
+	grab.update(dt, airborne)      # the board comes up to a squeezing hand once the current trick has finished...
+	grab.hold_board(sim, dt)       # ...or, taken off your feet, is wherever your hand has it
+	# Left trigger: squeeze it to take the board off your feet, let go to catch it (a miss leaves it in your hand: squeeze and let go again).
+	if command.detach and not detach_was and grab.off == null:
+		grab.toggle_off(sim, vr)
+	if not command.detach and detach_was and grab.off != null:
+		grab.toggle_off(sim, vr)
+	detach_was = command.detach
+	hands.update(dt)
+	grab.place()                   # ...then each holding hand is fitted onto its edge (after the hands have posed)
 	hud.update(dt)
 	if vr_gauge:
 		vr_gauge.update(sim, hud.message, hud.message_time, rig_control.anchor, rig_control.yaw_cal)
@@ -199,6 +216,13 @@ func _on_sim_event(type: String, data: Dictionary) -> void:
 				hud.say("LOOP!", 1.6)
 		"detach":
 			hud.say("Board off", 0.7)
+		"catchMiss":
+			hud.say("Missed it", 0.6)
+		"dropBoard":
+			hud.say("Dropped it", 0.9)
+		"grabEnd":
+			if data.time > 0.3:
+				hud.say("%s  %.1fs" % [data.name, data.time])
 		"catch":
 			if data.quality == "sketchy":
 				hud.say("Sketchy catch", 0.8)
