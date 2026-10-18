@@ -1,0 +1,12 @@
+{
+  "name": "skatepark-godot",
+  "private": true,
+  "type": "module",
+  "description": "Build-time tools for the Godot port (level GLB preparation). The game itself is the Godot project.",
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "meshoptimizer": "^1.3.0"
+  }
+}
