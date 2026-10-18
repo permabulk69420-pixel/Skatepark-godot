@@ -33,7 +33,7 @@ func _init(parent: Node, p_sim: Skater, level_name: String, hint: String) -> voi
 	fade_rect.visible = false
 	layer.add_child(fade_rect)
 
-	var title := _label("SKATE PARK  ·  %s" % level_name.to_upper(), 13)
+	var title := make_label("SKATE PARK  ·  %s" % level_name.to_upper(), 13)
 	title.position = Vector2(24, 20)
 	layer.add_child(title)
 
@@ -47,22 +47,24 @@ func _init(parent: Node, p_sim: Skater, level_name: String, hint: String) -> voi
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(bottom)
 
-	trick_label = _label("", 24)
+	trick_label = make_label("", 24)
 	trick_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	trick_label.custom_minimum_size = Vector2(500, 32)
 	bottom.add_child(trick_label)
 
-	balance_bar = _make_balance_bar()
+	var bar_parts := make_balance_bar(240.0, 10.0)
+	balance_bar = bar_parts[0]
+	balance_marker = bar_parts[1]
 	var bar_row := CenterContainer.new()
 	bar_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar_row.add_child(balance_bar)
 	bottom.add_child(bar_row)
 
-	speed_label = _label("", 13)
+	speed_label = make_label("", 13)
 	speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(speed_label)
 
-	hint_label = _label(hint, 12)
+	hint_label = make_label(hint, 12)
 	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint_label.custom_minimum_size = Vector2(440, 0)
 	hint_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -73,13 +75,13 @@ func _init(parent: Node, p_sim: Skater, level_name: String, hint: String) -> voi
 	hint_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	layer.add_child(hint_label)
 
-	status_label = _label("", 16)
+	status_label = make_label("", 16)
 	status_label.set_anchors_preset(Control.PRESET_CENTER)
 	status_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	layer.add_child(status_label)
 
 
-static func _label(text: String, size: int) -> Label:
+static func make_label(text: String, size: int) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", size)
@@ -90,9 +92,10 @@ static func _label(text: String, size: int) -> Label:
 	return label
 
 
-func _make_balance_bar() -> Control:
+# The balance meter: a strip that goes red - amber - green - amber - red, with a white marker. Returns [bar, marker].
+static func make_balance_bar(width: float, height: float) -> Array:
 	var bar := Control.new()
-	bar.custom_minimum_size = Vector2(240, 10)
+	bar.custom_minimum_size = Vector2(width, height)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.visible = false
 	var gradient := Gradient.new()
@@ -100,21 +103,26 @@ func _make_balance_bar() -> Control:
 	gradient.colors = PackedColorArray([Color("b5412f"), Color("b08a2e"), Color("2f7d63"), Color("2f7d63"), Color("b08a2e"), Color("b5412f")])
 	var texture := GradientTexture1D.new()
 	texture.gradient = gradient
-	texture.width = 240
+	texture.width = int(width)
 	var strip := TextureRect.new()
 	strip.texture = texture
 	strip.stretch_mode = TextureRect.STRETCH_SCALE
 	strip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	strip.size = Vector2(240, 10)
+	strip.size = Vector2(width, height)
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(strip)
-	balance_marker = ColorRect.new()
-	balance_marker.color = Color.WHITE
-	balance_marker.size = Vector2(4, 20)
-	balance_marker.position = Vector2(118, -5)
-	balance_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(balance_marker)
-	return bar
+	var marker := ColorRect.new()
+	marker.color = Color.WHITE
+	marker.size = Vector2(maxf(4.0, height * 0.4), height * 2.0)
+	marker.position = Vector2(marker_x(width, 0.0) - marker.size.x / 2.0, -height * 0.5)
+	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(marker)
+	return [bar, marker]
+
+
+# The x of the marker's centre for a balance of bal (−1..1, 0 = middle) on a bar that wide.
+static func marker_x(width: float, bal: float) -> float:
+	return width / 2.0 + clampf(bal, -1.0, 1.0) * width / 2.0
 
 
 func say(text: String, seconds: float = 1.4) -> void:
@@ -144,4 +152,4 @@ func update(dt: float) -> void:
 	speed_label.text = "%.1f m/s" % sim.speed
 	balance_bar.visible = g != null
 	if g != null:
-		balance_marker.position.x = 118.0 + clampf(g.bal, -1.0, 1.0) * 120.0
+		balance_marker.position.x = marker_x(240.0, g.bal) - balance_marker.size.x / 2.0

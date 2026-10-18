@@ -1,12 +1,17 @@
-# The game: loads the level, puts the skater on it, and runs the frame loop.
+# The game: loads the level, puts the skater on it, and runs the frame loop. In a headset (OpenXR) the player stands on the board
+# and the Quest controllers drive it; otherwise it plays on a flat screen with a keyboard or gamepad.
 extends Node3D
 
 const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · hold R: back to the entrance · Z stance\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance, hold X entrance"
+const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
 
 var level_id := Levels.DEFAULT_LEVEL
 var info: Dictionary
+var vr := false
 var rig: Node3D
 var camera: Camera3D
+var left_controller: XRController3D
+var right_controller: XRController3D
 var level: LevelLoader
 var world: SkateWorld
 var sim: Skater
@@ -15,6 +20,9 @@ var board_view: BoardView
 var hud: Hud
 var sfx: Sfx
 var music: Music
+var haptics: Haptics
+var vr_gauge: VrGauge
+var hand_balance := HandBalance.new()
 var input := SkateInput.new()
 var ready_to_play := false
 var dragging := false
@@ -22,11 +30,23 @@ var dragging := false
 
 func _ready() -> void:
 	info = Levels.LEVELS[level_id]
+	vr = _start_xr()
 	_build_environment(info.look)
-	rig = Node3D.new()
+	if vr:
+		rig = XROrigin3D.new()
+		camera = XRCamera3D.new()
+		left_controller = _make_controller(&"left_hand")
+		right_controller = _make_controller(&"right_hand")
+		rig.add_child(left_controller)
+		rig.add_child(right_controller)
+		input.vr_left = left_controller
+		input.vr_right = right_controller
+		haptics = Haptics.new(left_controller, right_controller)
+	else:
+		rig = Node3D.new()
+		camera = Camera3D.new()
 	rig.name = "Rig"
 	add_child(rig)
-	camera = Camera3D.new()
 	camera.name = "Camera"
 	camera.fov = 72.0
 	camera.near = 0.06
@@ -59,7 +79,9 @@ func _ready() -> void:
 	sim.event.connect(_on_sim_event)
 
 	hud = Hud.new(self, sim, info.name, CONTROLS_HINT)
-	rig_control = PlayerRig.new(rig, camera, sim, hud.fade_rect)
+	rig_control = PlayerRig.new(rig, camera, sim, hud.fade_rect, vr)
+	if vr:
+		vr_gauge = VrGauge.new(rig)
 	var model := (load("res://assets/board/skateboard.glb") as PackedScene).instantiate() as Node3D
 	board_view = BoardView.new(self, model)
 	sfx = Sfx.new(world)
@@ -74,17 +96,60 @@ func _ready() -> void:
 	hud.set_status("")
 	level.lods.update(level.spawn_pos)
 	ready_to_play = true
-	print("%s ready · %d grindable lines" % [info.name, paths.size()])
+	print("%s ready · %d grindable lines%s" % [info.name, paths.size(), " · headset" if vr else ""])
+
+
+# Starts OpenXR if there is a headset to talk to. Returns false (and the game plays on a flat screen) if there is not.
+func _start_xr() -> bool:
+	var xr := XRServer.find_interface("OpenXR")
+	if xr == null:
+		return false
+	if not xr.is_initialized() and not xr.initialize():
+		return false
+	get_viewport().use_xr = true
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)   # the headset sets the pace
+	if xr.has_method("get_available_display_refresh_rates"):
+		var rates = xr.call("get_available_display_refresh_rates")
+		if rates is Array and REFRESH_RATE in rates:
+			xr.set("display_refresh_rate", REFRESH_RATE)
+	return true
+
+
+static func _make_controller(tracker: StringName) -> XRController3D:
+	var controller := XRController3D.new()
+	controller.tracker = tracker
+	controller.name = String(tracker)
+	return controller
 
 
 func _process(delta: float) -> void:
 	if not ready_to_play:
 		return
 	var dt := minf(delta, 0.05)
+	# Holding both grips must not re-centre you while you are in the air.
+	input.block_recenter = sim.mode == Skater.Mode.AIR
 	var command := input.poll(dt)
+	if vr:
+		command.body_y = camera.position.y if rig_control.calibrated else NAN
+		# In the headset the hands balance grinds and manuals: right hand up pushes the meter right, left hand up pushes it left. The
+		# neutral hand position is only learned while rolling relaxed on the ground, not through a crouch, pop or flight.
+		var relaxed := sim.mode == Skater.Mode.GROUND and sim.manual == null and sim.grounded_time > 0.4 and absf(sim.crouch) < 0.06 and not command.jump
+		var left = left_controller.position if left_controller.get_has_tracking_data() else null
+		var right = right_controller.position if right_controller.get_has_tracking_data() else null
+		command.lean = hand_balance.update(dt, left, right, sim.balance != null, relaxed)
+		# On rails, reverse the hand tilt: raising the right hand corrects left, and vice versa.
+		if sim.mode == Skater.Mode.GRIND:
+			command.lean *= -1.0
 	if command.toggle_stance and sim.mode == Skater.Mode.GROUND and sim.speed < 2.0:
 		sim.face_offset = -sim.face_offset
 		hud.say("Goofy" if sim.goofy else "Regular", 1.0)
+		if haptics:
+			haptics.pulse(0.3, 25)
+	if command.recenter:
+		rig_control.request_calibration()
+		hud.say("Recentred", 1.0)
+		if haptics:
+			haptics.pulse(0.4, 40)
 	if command.to_spawn:
 		sim.respawn(sim.spawn)
 	sim.update(command, dt)
@@ -92,7 +157,11 @@ func _process(delta: float) -> void:
 	level.lods.update(camera.global_position)
 	board_view.update(sim, dt)
 	hud.update(dt)
+	if vr_gauge:
+		vr_gauge.update(sim, hud.message, hud.message_time, rig_control.anchor, rig_control.yaw_cal)
 	sfx.update(sim, dt)
+	if haptics:
+		haptics.continuous(sim)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -105,9 +174,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		rig_control.turn_view(event.relative.x, event.relative.y)
 
 
-# What the skater just did: sounds, and the trick names on the screen.
+# What the skater just did: sounds, buzzes in the hands, and the trick names on the screen.
 func _on_sim_event(type: String, data: Dictionary) -> void:
 	sfx.event(type, data)
+	if haptics:
+		haptics.event(type, data)
 	match type:
 		"flipStart":
 			hud.say(data.name, 1.6)
