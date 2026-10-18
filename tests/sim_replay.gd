@@ -13,7 +13,7 @@
 # are ones that are stable.
 extends SceneTree
 
-const LEVEL_IDS := ["gravesend", "megaramp", "flightline"]
+const LEVEL_IDS := ["gravesend", "megaramp", "flightline", "breakwater", "foundry"]
 const FIXTURES := "res://tests/fixtures"
 const MODES := ["ground", "air", "grind", "bail", "loop"]
 const POS_TOLERANCE := 0.01   # metres
@@ -70,9 +70,10 @@ func run() -> void:
 		await physics_frame
 		var world := SkateWorld.new(holder.get_world_3d().direct_space_state)
 		var paths := GrindPath.parse(level.grind_nodes)
+		var loops := LoopPath.parse(level.loop_nodes)
 		for scenario_name in names:
 			total += 1
-			if not replay(dir, String(scenario_name), level, world, paths, info.bounds):
+			if not replay(dir, String(scenario_name), level, world, paths, loops, info.bounds):
 				failed += 1
 		# the next level must not share a physics world with this one's collision
 		root.remove_child(holder)
@@ -83,11 +84,11 @@ func run() -> void:
 	quit(0 if failed == 0 else 1)
 
 
-func replay(dir: String, scenario_name: String, level: LevelLoader, world: SkateWorld, paths: Array[GrindPath], bounds: Dictionary) -> bool:
+func replay(dir: String, scenario_name: String, level: LevelLoader, world: SkateWorld, paths: Array[GrindPath], loops: Array[LoopPath], bounds: Dictionary) -> bool:
 	var scenario := read_json("%s/%s.input.json" % [dir, scenario_name])
 	var expected := read_json("%s/%s.expected.json" % [dir, scenario_name])
 	var rand := Mulberry.new()
-	var sim := Skater.new(world, paths, [] as Array[LoopPath], bounds, true)
+	var sim := Skater.new(world, paths, loops, bounds, true)
 	sim.random_fn = rand.next
 	sim.set_spawn(level.spawn_pos, level.spawn_heading)
 	var events: Array = []

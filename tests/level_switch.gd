@@ -37,8 +37,10 @@ func run() -> void:
 	change_scene_to_file("res://scenes/main.tscn")
 	await process_frame
 	var main := await loaded()
-	check(main.level_id == "gravesend", "opens on %s by default" % main.level_id)
-	var expected := ["megaramp", "flightline", "gravesend"]
+	check(main.level_id == Levels.DEFAULT_LEVEL, "opens on %s by default" % main.level_id)
+	# every level in turn, ending back where it began
+	var expected: Array = Levels.ORDER.slice(1)
+	expected.append(Levels.ORDER[0])
 	for want in expected:
 		key(KEY_L, true)
 		var before := current_scene
@@ -56,7 +58,7 @@ func run() -> void:
 	await create_timer(0.3).timeout
 	key(KEY_L, false)
 	await process_frame
-	check(current_scene == main and main.level_id == "gravesend", "a short press stays put")
+	check(current_scene == main and main.level_id == Levels.ORDER[0], "a short press stays put")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Levels.SETTINGS))
 	print("\n%s" % ("all level-switch checks pass" if failures == 0 else "%d failed" % failures))
 	quit(0 if failures == 0 else 1)

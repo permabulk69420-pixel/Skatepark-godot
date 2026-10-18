@@ -1,6 +1,8 @@
 // Records a scenario: the inputs, and what the web build's sim did with them, into tests/fixtures (Gravesend's) or
 // tests/fixtures/<level id>/ (every other level's).
 //   WEB_REPO=/path/to/Skatepark- node tests/reference/record.mjs <level id> <collision.bin|-> <name> [name …]
+// <name> can also be scan:<from>-<to>: runs random:<from> … random:<to> and lists the grinds, loops and lip-airs each one gets into (nothing is
+// recorded), to pick seeds that exercise a level's coping, bowls and loops.
 // <name> is an existing fixture's name (re-records its expected trace), or one of: ride, rail, ledge, random:<seed>, or a scenario listed
 // for that level in LEVEL_SCENARIOS below.
 // <collision.bin>: from `godot --headless --path . -s res://tests/reference/dump_collision.gd -- <level id> collision.bin`.
@@ -54,6 +56,11 @@ GENERATED.boardoff_bail = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }]
 GENERATED.boardoff_reversed = () => timeline([...ollie, [0.1, { drive: 1, grab: 1 }], [0.2, { grab: 1, act: 'detach' }], [0.2, { grab: 1 }], [0.05, { grab: 1, act: 'catch_sketchy_reversed' }], [0.8, { drive: 1 }], [2]]);
 // Scenarios that only make sense on one level.
 const LEVEL_SCENARIOS = {
+  foundry: {
+    // straight off the start tower: through the loop-the-loop, along the plaza to the big quarter (the air over its lip), back through
+    // the loop the other way and up the tower's ramp
+    fo_run: () => timeline([[0.5], [20, { drive: 1 }]]),
+  },
   flightline: {
     // straight down from the start tower: the first gap (a bail, the respawn at the top), then again over the first gap and on to the second
     fl_run: () => timeline([[0.5], [24, { drive: 1 }]]),
@@ -103,6 +110,18 @@ function random(seed) {
 
 const ctx = await buildWorld(levelPath, collisionBin === '-' ? null : collisionBin);
 for (const name of names) {
+  if (name.startsWith('scan:')) {
+    const [from, to] = name.slice(5).split('-').map(Number);
+    for (let seed = from; seed <= to; seed++) {
+      const seen = [];
+      run(ctx, random(seed), BOUNDS, (type, data, frame) => {
+        if (type === 'grindStart') seen.push(`${(frame / 72).toFixed(1)}s grind ${data.pathName} (${data.kind}, ${data.mode})`);
+        else if (type === 'loopStart') seen.push(`${(frame / 72).toFixed(1)}s loop`);
+      });
+      console.log(`random:${seed}  ${seen.join(' | ') || '-'}`);
+    }
+    continue;
+  }
   const file = `${FIXTURES}${name}.input.json`;
   const scenario = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8'))
     : name.startsWith('random:') ? random(Number(name.slice(7))) : (LEVEL_SCENARIOS[levelId]?.[name] ?? GENERATED[name])();

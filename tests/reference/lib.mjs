@@ -13,6 +13,7 @@ export const THREE = await load('node_modules/three/build/three.module.js');
 const { acceleratedRaycast, computeBoundsTree } = await load('dist/vendor/mesh-bvh.js');
 const { SkateWorld } = await load('dist/src/skate/world.js');
 const { parseGrindPaths } = await load('dist/src/skate/rails.js');
+const { parseLoopPaths } = await load('dist/src/skate/loop.js');
 const { Skater } = await load('dist/src/skate/sim.js');
 
 export const MODES = ['ground', 'air', 'grind', 'bail', 'loop'];
@@ -33,8 +34,8 @@ function colliderFrom(positions, indices, name) {
 // vertices on import, so for a like-for-like comparison use those exact triangles); pass null to use the file's own mesh.
 export async function buildWorld(levelPath, collisionBin = null) {
   const doc = await new NodeIO().registerExtensions(ALL_EXTENSIONS).read(levelPath);
-  const colliders = [], grindNodes = [];
-  const spawn = new THREE.Vector3(); let spawnHeading = 0;
+  const colliders = [], grindNodes = [], loopNodes = [];
+  const spawn = new THREE.Vector3(); let spawnHeading = 0, spawnFound = false;
   for (const node of doc.getRoot().listNodes()) {
     const extras = node.getExtras() || {};
     const world = new THREE.Matrix4().fromArray(node.getWorldMatrix());
@@ -60,12 +61,15 @@ export async function buildWorld(levelPath, collisionBin = null) {
       const o = new THREE.Object3D();
       o.name = node.getName(); o.userData = extras; o.applyMatrix4(world); o.updateMatrixWorld(true);
       grindNodes.push(o);
-    } else if (extras.role === 'spawn') {
+    } else if (extras.role === 'loop_path') {
+      loopNodes.push({ name: node.getName(), userData: extras });
+    } else if (extras.role === 'spawn' && (node.getName() === 'Spawn_Entrance' || !spawnFound)) {
       spawn.set(...node.getWorldTranslation());
       spawnHeading = extras.heading_radians ?? 0;
+      spawnFound = node.getName() === 'Spawn_Entrance';
     }
   }
-  return { world: new SkateWorld(colliders), paths: parseGrindPaths(grindNodes), spawn, spawnHeading };
+  return { world: new SkateWorld(colliders), paths: parseGrindPaths(grindNodes), loops: parseLoopPaths(loopNodes), spawn, spawnHeading };
 }
 
 // Same generator the Godot test uses, so the balance wobble and bail tumble line up.
@@ -75,10 +79,11 @@ export function mulberry(seed = 12345) {
 
 // frames: [[steer, drive, jump, grind, flip, stickX, stickY, lean, grabbing], …]; actions: [[frame, "detach" | "catch_clean" |
 // "catch_sketchy_reversed" | "roll:<radians>"], …] are things the hands would do to the sim before that frame's update. bounds: the level's play area.
-export function run(ctx, { dt, frames, actions = [] }, bounds) {
+// tap(type, data, frame): optional, sees every event with its details (the trace only keeps the type).
+export function run(ctx, { dt, frames, actions = [] }, bounds, tap = null) {
   const events = [];
   let frame = 0;
-  const sim = new Skater({ world: ctx.world, paths: ctx.paths, loops: [], bounds, requireGrind: true, random: mulberry(), onEvent: (type) => events.push([frame, type]) });
+  const sim = new Skater({ world: ctx.world, paths: ctx.paths, loops: ctx.loops, bounds, requireGrind: true, random: mulberry(), onEvent: (type, data) => { events.push([frame, type]); tap?.(type, data, frame); } });
   sim.setSpawn(ctx.spawn, ctx.spawnHeading);
   events.length = 0;
   const trace = [];
