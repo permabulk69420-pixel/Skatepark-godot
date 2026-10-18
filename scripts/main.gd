@@ -2,11 +2,13 @@
 # and the Quest controllers drive it; otherwise it plays on a flat screen with a keyboard or gamepad.
 extends Node3D
 
-const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · hold R: back to the entrance · Z stance · hold L: next level\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance, hold X entrance\nHeadset: hold the left menu button for the next level"
+const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · hold R: back to the entrance · Z stance · hold L: back home\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance, hold X entrance\nHeadset: hold the left menu button to go back home"
 const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
-const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go to the next level
+const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go home (or, at home, to the next level)
+const STEP_OFF_HOLD := 0.6       # seconds the right stick is held down (Q on a keyboard: a tap) to step off the board
+const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps on the board (and off it again) · hold L: next level\nHeadset: left stick walks, right stick turns, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A steps on the board · hold the right stick down to step off · hold the left menu button for the next level"
 
-var level_id := Levels.saved()   # a test can set it before the scene is added; `-- level=<id>` on the command line does too
+var level_id := ""               # a test can set it before the scene is added; `-- level=<id>` on the command line does too; empty: the house
 var info: Dictionary
 var vr := false
 var rig: Node3D
@@ -32,12 +34,22 @@ var ready_to_play := false
 var dragging := false
 var held_level_switch := 0.0
 var switching := false
+var hub: Hub                     # the house (null in every other level)
+var foot: FootMode
+var on_foot := false
+var flat_remote_held := false
+var held_step_off := 0.0
+var step_key_was := false
+var remote_key_was := false
+var step_on_guard := false       # right A stepped you on: it must be let go before it can mean "jump"
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("level=") and Levels.LEVELS.has(arg.substr(6)):
 			level_id = arg.substr(6)
+	if level_id == "":
+		level_id = Levels.take_next()
 	info = Levels.LEVELS[level_id]
 	vr = _start_xr()
 	_build_environment(info.look)
@@ -72,7 +84,10 @@ func _ready() -> void:
 	add_child(loading_layer)
 	await get_tree().process_frame
 
-	level = LevelLoader.load_level(info.file, self, info.get("decals", ""))
+	if level_id == Levels.HUB:
+		level = LevelLoader.from_root(Hub.build_root(), self)
+	else:
+		level = LevelLoader.load_level(info.file, self, info.get("decals", ""))
 	if level == null:
 		loading.text = "The park could not load."
 		push_error("Could not load " + info.file)
@@ -87,7 +102,7 @@ func _ready() -> void:
 	sim.set_spawn(level.spawn_pos, level.spawn_heading)
 	sim.event.connect(_on_sim_event)
 
-	hud = Hud.new(self, sim, info.name, CONTROLS_HINT + "\n\n" + info.blurb)
+	hud = Hud.new(self, sim, info.name, (HUB_HINT if level_id == Levels.HUB else CONTROLS_HINT) + "\n\n" + info.blurb)
 	rig_control = PlayerRig.new(rig, camera, sim, hud.fade_rect, vr)
 	if vr:
 		vr_gauge = VrGauge.new(rig)
@@ -103,6 +118,13 @@ func _ready() -> void:
 	music.name = "Music"
 	add_child(music)
 	music.start()
+
+	if level_id == Levels.HUB:
+		hub = Hub.new(level, self, vr)
+		if hub.tv != null:
+			hub.tv.chosen.connect(_go_to)
+		foot = FootMode.new(rig, camera, world, vr)
+		_stand_up(level.spawn_pos, level.spawn_heading)
 
 	loading_layer.queue_free()
 	hud.set_status("")
@@ -138,14 +160,14 @@ func _process(delta: float) -> void:
 	if not ready_to_play or switching:
 		return
 	var dt := minf(delta, 0.05)
-	# Hold the left menu button (L on a keyboard) to go on to the next level; the game remembers it for next time.
+	# Hold the left menu button (L on a keyboard) to go home; at home, on to the next level.
 	var level_key := Input.is_key_pressed(KEY_L) or (vr and left_controller.is_button_pressed("menu_button"))
 	held_level_switch = held_level_switch + dt if level_key else 0.0
 	if held_level_switch > LEVEL_SWITCH_HOLD:
-		switching = true
-		level_id = Levels.next_after(level_id)
-		Levels.save(level_id)
-		get_tree().reload_current_scene()
+		_go_to(Levels.next_channel(Levels.saved()) if hub != null else Levels.HUB)
+		return
+	if on_foot:
+		_process_foot(dt)
 		return
 	# Holding both grips must not re-centre you while you are in the air.
 	input.block_recenter = sim.mode == Skater.Mode.AIR or grab.holding()
@@ -171,7 +193,19 @@ func _process(delta: float) -> void:
 		hud.say("Recentred", 1.0)
 		if haptics:
 			haptics.pulse(0.4, 40)
+	if hub != null:
+		_hub_step_off(dt, command)
+		if on_foot:
+			return
+	if step_on_guard:
+		if command.jump:
+			command.jump = false
+		else:
+			step_on_guard = false
 	if command.to_spawn:
+		if hub != null:
+			_stand_up(level.spawn_pos, level.spawn_heading)
+			return
 		sim.respawn(sim.spawn)
 	sim.update(command, dt)
 	rig_control.update(dt)
@@ -196,14 +230,115 @@ func _process(delta: float) -> void:
 		haptics.continuous(sim)
 
 
+func _turn_view(dx: float, dy: float) -> void:
+	if on_foot:
+		foot.turn_view(dx, dy)
+	else:
+		rig_control.turn_view(dx, dy)
+
+
+# Off to another scene (a level, or home): remembered, then the whole scene is loaded again.
+func _go_to(id: String) -> void:
+	if switching:
+		return
+	switching = true
+	Levels.go_to(id)
+	get_tree().reload_current_scene()
+
+
+# Stand up in the house at `pos` facing `yaw` (a sim heading), the board put away.
+func _stand_up(pos: Vector3, yaw: float) -> void:
+	on_foot = true
+	flat_remote_held = false
+	foot.place(pos, yaw)
+	board_view.root.visible = false
+	board_view.shadow.visible = false
+	grab.release_all()
+	hud.speed_label.visible = false
+
+
+# Drop the board in front of you and step on it.
+func _step_on() -> void:
+	var yaw := foot.facing()
+	var at := foot.body() + Vector3(-sin(yaw), 0.0, -cos(yaw)) * 0.7
+	var hit := world.ground(at.x, at.z, foot.floor_y + 0.4, SkateWorld.Hit.new(), 3.0)
+	at = foot.body() if hit == null else Vector3(at.x, hit.y, at.z)
+	var where := Skater.SpawnPoint.new()
+	where.pos = at
+	where.heading = yaw
+	sim.respawn(where)
+	on_foot = false
+	step_on_guard = true
+	board_view.root.visible = true
+	hud.speed_label.visible = true
+	rig_control.request_calibration()
+
+
+# While riding in the house: step off (a tap of Q, or the right stick held down) once you are rolling slowly on the ground.
+func _hub_step_off(dt: float, command: Skater.Command) -> void:
+	var held := false
+	var tapped := Input.is_key_pressed(KEY_Q) and not step_key_was
+	step_key_was = Input.is_key_pressed(KEY_Q)
+	if vr:
+		held = right_controller.is_button_pressed("primary_click")
+	held_step_off = held_step_off + dt if held else 0.0
+	if (tapped or held_step_off > STEP_OFF_HOLD) and sim.mode == Skater.Mode.GROUND and sim.speed < 2.0:
+		held_step_off = -1e9
+		_stand_up(sim.pos, sim.heading)
+
+
+# Walking about the house: the TV and its remote, and stepping onto the board.
+func _process_foot(dt: float) -> void:
+	var move := Vector2.ZERO
+	var turn := 0.0
+	var pointers: Array = []
+	var step_on := false
+	var q_pressed := Input.is_key_pressed(KEY_Q)
+	if vr:
+		var left_stick := left_controller.get_vector2("primary")
+		var right_stick := right_controller.get_vector2("primary")
+		var holder: String = hub.tv.holder if hub.tv != null else ""
+		move = Vector2.ZERO if holder == "left" else left_stick
+		turn = 0.0 if holder == "right" else right_stick.x
+		for pair in [["left", left_controller], ["right", right_controller]]:
+			var c: XRController3D = pair[1]
+			pointers.append({"id": pair[0], "node": c, "pos": c.global_position, "squeeze": c.is_button_pressed("grip_click"),
+				"stick_x": c.get_vector2("primary").x, "trigger": c.is_button_pressed("trigger_click")})
+		step_on = right_controller.is_button_pressed("ax_button") and holder != "right" and not step_on_guard
+		if not right_controller.is_button_pressed("ax_button"):
+			step_on_guard = false
+	else:
+		move = Vector2(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
+		var e_pressed := Input.is_key_pressed(KEY_E)
+		if e_pressed and not remote_key_was:
+			flat_remote_held = not flat_remote_held
+		remote_key_was = e_pressed
+		step_on = q_pressed and not step_key_was
+		step_key_was = q_pressed
+		pointers.append({"id": "key", "node": camera, "pos": camera.global_position, "squeeze": flat_remote_held,
+			"stick_x": float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
+			"trigger": Input.is_key_pressed(KEY_ENTER) or Input.is_key_pressed(KEY_KP_ENTER)})
+	foot.update(dt, move, turn)
+	if hub.tv != null:
+		hub.tv.update(pointers)
+		if hub.tv.holder == "":
+			flat_remote_held = false
+		elif not vr:
+			hud.say("Remote: left / right change the level · Enter plays · E puts it down", 0.3)
+	hands.update(dt)
+	hud.update(dt)
+	if step_on and foot.placed:
+		_step_on()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	# Flat-screen look-around: drag the mouse (or a finger).
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		dragging = event.pressed
 	elif event is InputEventMouseMotion and dragging and rig_control != null:
-		rig_control.turn_view(event.relative.x, event.relative.y)
+		_turn_view(event.relative.x, event.relative.y)
 	elif event is InputEventScreenDrag and rig_control != null:
-		rig_control.turn_view(event.relative.x, event.relative.y)
+		_turn_view(event.relative.x, event.relative.y)
 
 
 # What the skater just did: sounds, buzzes in the hands, and the trick names on the screen.

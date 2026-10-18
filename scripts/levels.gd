@@ -7,6 +7,20 @@ class_name Levels
 extends RefCounted
 
 const LEVELS := {
+	# The house: a place to walk around, with the TV that picks the level. `blockout` builds a plain stand-in (scripts/hub_blockout.gd) until
+	# the real model is at `file`.
+	"hub": {
+		"name": "Home",
+		"file": "res://assets/levels/hub.glb",
+		"blockout": true,
+		"blurb": "Walk to the TV, pick up the remote, choose a level · the half pipe is out the back · hold the left menu button to come back here",
+		"bounds": {"x": 20.0, "z": 21.0, "cx": 0.0, "cz": -9.0},
+		"camera_far": 400.0,
+		"look": {
+			"exposure": 0.8, "sun": 2.6, "sunColor": "#ffe6c4", "sunDirection": [-0.45, 0.65, -0.55],
+			"hemisphere": 0.45, "environment": 0.4, "fog": "#c4d4de", "fogNear": 120.0, "fogFar": 300.0,
+		},
+	},
 	"gravesend": {
 		"name": "Gravesend",
 		"file": "res://assets/levels/gravesend.glb",
@@ -66,19 +80,36 @@ const LEVELS := {
 	},
 }
 
-const DEFAULT_LEVEL := "gravesend"
-const ORDER := ["gravesend", "foundry", "breakwater", "megaramp", "flightline"]   # the order "next level" goes through
+const HUB := "hub"
+const PLAYABLE := ["gravesend", "foundry", "breakwater", "megaramp", "flightline"]   # the levels on the TV, in channel order
 const SETTINGS := "user://settings.cfg"
 
+# The level the next scene should open on (set by go_to); empty means the house.
+static var next_id := ""
 
-# The level picked last time (the game opens on it), or the default.
+
+# Remembers where the player went, and sets it up for the scene that is about to be loaded.
+static func go_to(id: String) -> void:
+	next_id = id
+	if PLAYABLE.has(id):
+		save(id)
+
+
+# What a freshly started scene opens on: the level asked for by go_to, otherwise the house.
+static func take_next() -> String:
+	var id := next_id if LEVELS.has(next_id) else HUB
+	next_id = ""
+	return id
+
+
+# The last level that was played (the TV opens on it), or the first one.
 static func saved() -> String:
 	var config := ConfigFile.new()
 	if config.load(SETTINGS) == OK:
-		var id: String = config.get_value("game", "level", DEFAULT_LEVEL)
-		if LEVELS.has(id):
+		var id: String = config.get_value("game", "level", PLAYABLE[0])
+		if PLAYABLE.has(id):
 			return id
-	return DEFAULT_LEVEL
+	return PLAYABLE[0]
 
 
 static func save(id: String) -> void:
@@ -88,5 +119,6 @@ static func save(id: String) -> void:
 	config.save(SETTINGS)
 
 
-static func next_after(id: String) -> String:
-	return ORDER[(ORDER.find(id) + 1) % ORDER.size()]
+# The channel after this one (wrapping), in the TV's order.
+static func next_channel(id: String, step := 1) -> String:
+	return PLAYABLE[posmod(PLAYABLE.find(id) + step, PLAYABLE.size())]
