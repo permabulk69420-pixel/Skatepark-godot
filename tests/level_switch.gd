@@ -1,4 +1,4 @@
-# Holding the next-level key (L) goes on to the next level, wraps round, and the game remembers where it was left.
+# Holding the menu key (L) goes home from a level and, at home, on to the next level; the TV opens on the last level played.
 #   godot --headless --path . -s res://tests/level_switch.gd
 extends SceneTree
 
@@ -32,33 +32,42 @@ func loaded() -> Node:
 	return current_scene
 
 
+# Holds L until the scene changes, then lets go.
+func hold_l() -> Node:
+	key(KEY_L, true)
+	var before := current_scene
+	var guard := 0
+	while current_scene == before and guard < 600:
+		await create_timer(0.05).timeout
+		guard += 1
+	key(KEY_L, false)
+	var main := await loaded()
+	await create_timer(0.3).timeout
+	return main
+
+
 func run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Levels.SETTINGS))
+	Levels.next_id = ""
 	change_scene_to_file("res://scenes/main.tscn")
 	await process_frame
 	var main := await loaded()
-	check(main.level_id == Levels.DEFAULT_LEVEL, "opens on %s by default" % main.level_id)
-	# every level in turn, ending back where it began
-	var expected: Array = Levels.ORDER.slice(1)
-	expected.append(Levels.ORDER[0])
-	for want in expected:
-		key(KEY_L, true)
-		var before := current_scene
-		var guard := 0
-		while current_scene == before and guard < 600:
-			await create_timer(0.05).timeout
-			guard += 1
-		key(KEY_L, false)
-		main = await loaded()
-		check(main.level_id == want, "hold L -> %s (now %s)" % [want, main.level_id])
+	check(main.level_id == Levels.HUB, "opens at home (now %s)" % main.level_id)
+	# at home the key goes on to the level after the last one played, and from a level it comes home again
+	var want: String = Levels.next_channel(Levels.saved())
+	for lap in 2:
+		main = await hold_l()
+		check(main.level_id == want, "hold L at home -> %s (now %s)" % [want, main.level_id])
 		check(Levels.saved() == want, "remembered %s" % want)
-		await create_timer(0.3).timeout
+		main = await hold_l()
+		check(main.level_id == Levels.HUB, "hold L in a level -> home")
+		want = Levels.next_channel(want)
 	# a short press does nothing
 	key(KEY_L, true)
 	await create_timer(0.3).timeout
 	key(KEY_L, false)
 	await process_frame
-	check(current_scene == main and main.level_id == Levels.ORDER[0], "a short press stays put")
+	check(current_scene == main and main.level_id == Levels.HUB, "a short press stays put")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Levels.SETTINGS))
 	print("\n%s" % ("all level-switch checks pass" if failures == 0 else "%d failed" % failures))
 	quit(0 if failures == 0 else 1)
