@@ -1,20 +1,30 @@
-# Turns the keyboard (or a gamepad) into the things the skater cares about; Quest controllers will join these later.
+# Turns the Quest controllers, a keyboard or a gamepad into the things the skater cares about.
 #   left stick / W S A D   up = push, down = brake, sideways = steer / air spin / grind balance
-#   A button / Space        hold to crouch, release to ollie
-#   right trigger / G or Shift   grind: press it once; the rail or coping the board touches in the next moment is caught
-#   B button / F + stick    (Tony Hawk style, trick_controls.gd) left/right = kickflip/heelflip, down = shove-it,
-#                           down-left/down-right = varial kickflip/heelflip; up does nothing
-#   left trigger / C        in the air while holding the board in a grab: take the board off your feet
-#   Y / Z                   switch stance        X held / R held: back to the entrance
+#   right A / Space / pad A       hold to crouch, release to ollie
+#   right trigger / G or Shift / pad right trigger   grind: press it once; the rail or coping the board touches in the next moment is caught
+#   right B / F + stick / pad B   (Tony Hawk style, trick_controls.gd) left/right = kickflip/heelflip, down = shove-it,
+#                                 down-left/down-right = varial kickflip/heelflip; up does nothing
+#   left trigger / C / pad left trigger   in the air while holding the board in a grab: take the board off your feet
+#   left Y / Z / pad Y      switch stance
+#   left X held / R held / pad X held   back to the entrance
+#   both grips held (on the ground)     stand on the board where you are (the headset only)
 class_name SkateInput
 extends RefCounted
 
 const DEADZONE := 0.15
 
 var held_spawn := 0.0
+var held_recenter := 0.0
 var key_stance_was := false
 var pad_stance_was := false
+var vr_stance_was := false
 var command := Skater.Command.new()
+
+# In the headset: the two XRController3D nodes (anything with is_button_pressed / get_vector2 will do). Null on a flat screen.
+var vr_left = null
+var vr_right = null
+# Set by the game: while true, holding both grips does not re-centre (in the air, or while grabbing the board).
+var block_recenter := false
 
 
 static func deadzone(v: float) -> float:
@@ -38,7 +48,10 @@ func poll(dt: float) -> Skater.Command:
 	key_stance_was = key_stance
 	var spawn_held := Input.is_key_pressed(KEY_R)
 	var stick := Vector2(steer, -drive)   # on a keyboard the stick is the steer/drive keys
-	var has_pad := false
+	var has_stick := false                # a real stick is driving the trick controls (gamepad or controller)
+	var in_vr := vr_left != null and vr_right != null
+	var left_squeeze := false
+	var right_squeeze := false
 
 	var pads := Input.get_connected_joypads()
 	if pads.size() > 0:
@@ -46,7 +59,7 @@ func poll(dt: float) -> Skater.Command:
 		var x := Input.get_joy_axis(pad, JOY_AXIS_LEFT_X)
 		var y := Input.get_joy_axis(pad, JOY_AXIS_LEFT_Y)
 		if absf(x) > DEADZONE or absf(y) > DEADZONE:
-			has_pad = true
+			has_stick = true
 			steer += deadzone(x)
 			drive -= deadzone(y)
 			stick = Vector2(x, y)
@@ -59,27 +72,51 @@ func poll(dt: float) -> Skater.Command:
 		toggle_stance = toggle_stance or (pad_stance and not pad_stance_was)
 		pad_stance_was = pad_stance
 
-	# Held R (or X) takes you back to the entrance.
+	if in_vr:
+		# In the headset, trick controls come exclusively from the left controller and right B: no keyboard can change them.
+		flip = false
+		var s: Vector2 = vr_left.get_vector2("primary")
+		steer += deadzone(s.x)
+		drive += deadzone(s.y)               # a controller's stick has up = +y
+		stick = Vector2(s.x, -s.y)           # …the trick stick works in screen terms: up = −y
+		has_stick = true
+		left_squeeze = vr_left.is_button_pressed("grip_click")
+		spawn_held = spawn_held or vr_left.is_button_pressed("ax_button")   # left X
+		var left_y: bool = vr_left.is_button_pressed("by_button")
+		toggle_stance = toggle_stance or (left_y and not vr_stance_was)
+		vr_stance_was = left_y
+		detach = detach or vr_left.is_button_pressed("trigger_click")
+		jump = jump or vr_right.is_button_pressed("ax_button")                # right A
+		grind = grind or vr_right.is_button_pressed("trigger_click")
+		flip = flip or vr_right.is_button_pressed("by_button")                # right B
+		right_squeeze = vr_right.is_button_pressed("grip_click")
+
+	# Held R / left X / pad X takes you back to the entrance; both grips held stands you on the board where you are.
 	held_spawn = held_spawn + dt if spawn_held else 0.0
+	held_recenter = held_recenter + dt if (left_squeeze and right_squeeze and not block_recenter) else 0.0
 	var to_spawn := false
+	var recenter := false
+	if held_recenter > 0.6:
+		recenter = true
+		held_recenter = -1e9
 	if held_spawn > 0.8:
 		to_spawn = true
 		held_spawn = -1e9
 
 	c.steer = clampf(steer, -1.0, 1.0)
 	c.drive = clampf(drive, -1.0, 1.0)
-	# Balance comes from the hands in VR; on a flat screen the steer keys balance so it stays playable for testing.
-	c.lean = c.steer
+	# Balance comes from the hands in the headset (main sets it); on a flat screen the steer keys balance so it stays playable.
+	c.lean = 0.0 if in_vr else c.steer
 	c.jump = jump
 	c.grind = grind
 	c.flip = flip
 	c.detach = detach
 	c.to_spawn = to_spawn
+	c.recenter = recenter
 	c.toggle_stance = toggle_stance
-	c.recenter = false
 	c.grabbing = false
 	c.body_y = NAN
-	if has_pad:
+	if has_stick:
 		c.trick_stick = Vector2(clampf(stick.x, -1.0, 1.0), clampf(stick.y, -1.0, 1.0))
 	else:
 		c.trick_stick = Vector2(clampf(c.steer, -1.0, 1.0), clampf(-c.drive, -1.0, 1.0))
