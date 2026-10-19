@@ -119,6 +119,23 @@ func run() -> void:
 		lowest = minf(lowest, main.sim.pos.y)
 	check(top > 0.3 and lowest > -0.05, "rolls up the half pipe's transition and does not fall through (up %.2f, lowest %.2f)" % [top, lowest])
 
+	# ollies on the transition: the deck must have nothing standing inside the ramp behind the curve for the front wheels to slam into
+	var slams := []
+	var on_bail := func(type: String, data: Dictionary):
+		if type == "bail":
+			slams.append(data.reason)
+	main.sim.event.connect(on_bail)
+	for pop_frame in range(100, 200):
+		where.pos = Vector3(0.0, 0.05, -19.5)
+		main.sim.respawn(where)
+		for i in 72 * 4:
+			cmd.drive = 1.0 if i < 144 else 0.0
+			cmd.jump = i >= pop_frame - 18 and i < pop_frame
+			main.sim.update(cmd, 1.0 / 72.0)
+	cmd.jump = false
+	main.sim.event.disconnect(on_bail)
+	check(slams.is_empty(), "ollies up the half pipe's transition land (bails: %s)" % [slams])
+
 	# the TV: pick up the remote, change channel, play
 	var tv = main.hub.tv
 	var picked: Array = []

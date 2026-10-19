@@ -16,8 +16,9 @@ const LEVELS := {
 		"bounds": {"x": 20.0, "z": 21.0, "cx": 0.0, "cz": -9.0},
 		"camera_far": 400.0,
 		"look": {
-			"exposure": 0.8, "sun": 2.6, "sunColor": "#ffe6c4", "sunDirection": [-0.45, 0.65, -0.55],
-			"hemisphere": 0.45, "environment": 0.4, "fog": "#c4d4de", "fogNear": 120.0, "fogFar": 300.0,
+			# golden hour: a low warm sun from the west-south-west and a warm horizon
+			"exposure": 0.8, "sun": 2.6, "sunColor": "#ffbe7a", "sunDirection": [-0.75, 0.3, 0.45],
+			"hemisphere": 0.45, "environment": 0.4, "fog": "#e6c6a2", "fogNear": 120.0, "fogFar": 300.0,
 			"ambient": "#a07a58", "ambientSky": 0.35,
 		},
 	},
