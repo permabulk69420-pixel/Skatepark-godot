@@ -95,10 +95,8 @@ jobs:
           godot --headless --import || true
           mkdir -p build
           godot --headless --export-release "Quest" build/skatepark.apk
-          godot --headless --export-debug "Quest" build/skatepark-debug.apk
           ls -la build
           test -s build/skatepark.apk
-          test -s build/skatepark-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -110,6 +108,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete quest-latest --yes --cleanup-tag || true
-          gh release create quest-latest build/skatepark.apk build/skatepark-debug.apk \
+          gh release create quest-latest build/skatepark.apk \
             --prerelease --target "$GITHUB_SHA" --title "Quest build ${GITHUB_RUN_NUMBER}" \
-            --notes "Built from commit ${GITHUB_SHA:0:7} on ${GITHUB_REF_NAME}. skatepark.apk is the one to install (faster); skatepark-debug.apk is the same game with debugging switched on."
+            --notes "Built from commit ${GITHUB_SHA:0:7} on ${GITHUB_REF_NAME}. skatepark.apk is the one to install."
