@@ -3,6 +3,11 @@
 class_name Hub
 extends RefCounted
 
+const INDOOR_LAYER := 2          # render layer bit for what is inside: the sun does not reach it, the lamps do
+const INDOOR := ["Interior_", "Cabinet_", "Shell_Timber_Painted_Interior", "TV_Screen"]
+const LAMP_COLOUR := Color("ffc68a")
+const LAMP_GAIN := 2.2
+
 var level: LevelLoader
 var tv: HubTv
 var lamps: Array[OmniLight3D] = []
@@ -25,12 +30,21 @@ static func build_root() -> Node3D:
 # `level` must already be loaded (in the tree).
 func _init(p_level: LevelLoader, parent: Node3D, vr := false) -> void:
 	level = p_level
+	# no shadows, so without this the sun shines straight through the roof onto everything inside and the room looks flat and cold
+	for node in level.root.find_children("*", "MeshInstance3D", true, false):
+		for prefix: String in INDOOR:
+			if node.name.begins_with(prefix):
+				(node as MeshInstance3D).layers = INDOOR_LAYER
+	var sun := parent.find_child("Sun", false, false) as DirectionalLight3D
+	if sun != null:
+		sun.light_cull_mask &= ~INDOOR_LAYER
 	for marker in level.markers_with("light"):
 		var lamp := OmniLight3D.new()
-		lamp.light_energy = (marker.get_meta("extras", {}) as Dictionary).get("energy", 0.8)
+		lamp.light_energy = (marker.get_meta("extras", {}) as Dictionary).get("energy", 0.8) * LAMP_GAIN
 		lamp.omni_range = 9.0
+		lamp.omni_attenuation = 1.6   # falls off faster than real, so each lamp lights its own patch of the room
 		lamp.shadow_enabled = false
-		lamp.light_color = Color("ffe2b8")
+		lamp.light_color = LAMP_COLOUR
 		marker.add_child(lamp)
 		lamps.append(lamp)
 	var screen := level.root.find_child("TV_Screen", true, false) as MeshInstance3D
