@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://3i1ewdhvs0rt"
+path="res://.godot/imported/hub_ground_orm.jpg-61f8f54ba4dfc58d1d4de94e885a221d.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "29a90e8eb9439eb98fa1b831239a71b8"
+}
+
+[deps]
+
+source_file="res://assets/levels/hub_ground_orm.jpg"
+dest_files=["res://.godot/imported/hub_ground_orm.jpg-61f8f54ba4dfc58d1d4de94e885a221d.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1
