@@ -35,7 +35,8 @@ function colliderFrom(positions, indices, name) {
 export async function buildWorld(levelPath, collisionBin = null) {
   const doc = await new NodeIO().registerExtensions(ALL_EXTENSIONS).read(levelPath);
   const colliders = [], grindNodes = [], loopNodes = [];
-  const spawn = new THREE.Vector3(); let spawnHeading = 0, spawnFound = false;
+  // like the web build: it starts at "Spawn_Entrance", and a level without one at this default point (other spawn nodes are ignored)
+  const spawn = new THREE.Vector3(0, 0.045, 40); let spawnHeading = 0;
   for (const node of doc.getRoot().listNodes()) {
     const extras = node.getExtras() || {};
     const world = new THREE.Matrix4().fromArray(node.getWorldMatrix());
@@ -63,10 +64,9 @@ export async function buildWorld(levelPath, collisionBin = null) {
       grindNodes.push(o);
     } else if (extras.role === 'loop_path') {
       loopNodes.push({ name: node.getName(), userData: extras });
-    } else if (extras.role === 'spawn' && (node.getName() === 'Spawn_Entrance' || !spawnFound)) {
+    } else if (extras.role === 'spawn' && node.getName() === 'Spawn_Entrance') {
       spawn.set(...node.getWorldTranslation());
       spawnHeading = extras.heading_radians ?? 0;
-      spawnFound = node.getName() === 'Spawn_Entrance';
     }
   }
   return { world: new SkateWorld(colliders), paths: parseGrindPaths(grindNodes), loops: parseLoopPaths(loopNodes), spawn, spawnHeading };

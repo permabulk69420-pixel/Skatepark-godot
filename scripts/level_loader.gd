@@ -4,6 +4,7 @@ class_name LevelLoader
 extends RefCounted
 
 const MARKER_ROLES := ["remote_spot", "board_slot", "ramp_pad", "light"]
+const START_SPAWNS := ["Spawn_Entrance", "Spawn_Hub"]   # the spawn nodes the game starts at (any other is ignored)
 
 var root: Node3D
 var render_meshes: Array = []       # MeshInstance3D, everything you see
@@ -31,7 +32,6 @@ static func from_root(root: Node3D, parent: Node3D, decals := "") -> LevelLoader
 	level.root = root
 	parent.add_child(level.root)
 	var collision_meshes: Array = []
-	var found_spawn := false
 	var stack: Array = [level.root]
 	while not stack.is_empty():
 		var node: Node = stack.pop_back()
@@ -46,11 +46,11 @@ static func from_root(root: Node3D, parent: Node3D, decals := "") -> LevelLoader
 		elif role in MARKER_ROLES and node is Node3D:
 			level.markers.append(node)
 		elif role == "spawn" and node is Node3D:
-			# a level can have several (Foundry: the tower and the plaza); the game starts at the entrance, as the web build does
-			if node.name == "Spawn_Entrance" or not found_spawn:
+			# a level can have several (Foundry: the tower and the plaza), but the web build only starts at "Spawn_Entrance"; a level
+			# without one (Switchyard) starts at the default point above. The house has its own.
+			if node.name in START_SPAWNS:
 				level.spawn_pos = (node as Node3D).global_position
 				level.spawn_heading = extras.get("heading_radians", 0.0)
-				found_spawn = node.name == "Spawn_Entrance"
 		elif node is MeshInstance3D:
 			if role == "collision" or node.name.begins_with("COL_"):
 				collision_meshes.append(node)
