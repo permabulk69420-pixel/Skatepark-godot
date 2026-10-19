@@ -287,6 +287,13 @@ func _hub_step_off(dt: float, command: Skater.Command) -> void:
 		_stand_up(sim.pos, sim.heading)
 
 
+func _hand_state(handedness: String) -> VrHands.HandState:
+	for s in hands.states:
+		if s.handedness == handedness:
+			return s
+	return null
+
+
 # Walking about the house: the TV and its remote, and stepping onto the board.
 func _process_foot(dt: float) -> void:
 	var move := Vector2.ZERO
@@ -302,7 +309,7 @@ func _process_foot(dt: float) -> void:
 		turn = 0.0 if holder == "right" else right_stick.x
 		for pair in [["left", left_controller], ["right", right_controller]]:
 			var c: XRController3D = pair[1]
-			pointers.append({"id": pair[0], "node": c, "pos": c.global_position, "squeeze": c.is_button_pressed("grip_click"),
+			pointers.append({"id": pair[0], "node": c, "state": _hand_state(pair[0]), "pos": c.global_position, "squeeze": c.is_button_pressed("grip_click"),
 				"stick_x": c.get_vector2("primary").x, "trigger": c.is_button_pressed("trigger_click")})
 		step_on = right_controller.is_button_pressed("ax_button") and holder != "right" and not step_on_guard
 		if not right_controller.is_button_pressed("ax_button"):
@@ -319,13 +326,13 @@ func _process_foot(dt: float) -> void:
 			"stick_x": float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
 			"trigger": Input.is_key_pressed(KEY_ENTER) or Input.is_key_pressed(KEY_KP_ENTER)})
 	foot.update(dt, move, turn)
+	hands.update(dt)               # (the hands first: the remote follows the one that holds it)
 	if hub.tv != null:
 		hub.tv.update(pointers)
 		if hub.tv.holder == "":
 			flat_remote_held = false
 		elif not vr:
 			hud.say("Remote: left / right change the level · Enter plays · E puts it down", 0.3)
-	hands.update(dt)
 	hud.update(dt)
 	if step_on and foot.placed:
 		_step_on()

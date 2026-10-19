@@ -3,6 +3,13 @@
 #   godot --headless --path . -s res://tests/hub_logic.gd
 extends SceneTree
 
+class FakeController extends Node3D:
+	var floats := {}
+	func get_float(action: String) -> float:
+		return floats.get(action, 0.0)
+	func get_has_tracking_data() -> bool:
+		return true
+
 var failures := 0
 var main: Node
 
@@ -145,6 +152,25 @@ func run() -> void:
 	pointer.squeeze = true
 	tv.update([pointer])
 	check(tv.holder == "", "a remote out of reach stays put")
+
+	# in a hand (the headset): the fingers close on it and it goes where the hand goes
+	var fake := FakeController.new()
+	main.add_child(fake)
+	var vr_hands := VrHands.new({"right": fake})
+	var hand: VrHands.HandState = vr_hands.states[0]
+	fake.global_position = tv.remote.global_position
+	var vr_pointer := {"id": "right", "node": fake, "state": hand, "pos": fake.global_position, "squeeze": true, "stick_x": 0.0, "trigger": false}
+	fake.floats["grip"] = 1.0
+	tv.update([vr_pointer])
+	check(tv.holder == "right" and hand.held, "a hand picks the remote up and closes on it")
+	fake.global_position += Vector3(0.0, 0.3, -0.2)
+	vr_hands.update(0.1)
+	tv.update([vr_pointer])
+	var socket: Vector3 = hand.model.socket_global().origin
+	check(tv.remote.global_position.distance_to(socket) < 0.1, "the remote goes where the hand goes")
+	vr_pointer.squeeze = false
+	tv.update([vr_pointer])
+	check(tv.holder == "" and not hand.held and tv.remote.get_parent() == tv.spot, "letting go opens the hand and puts the remote down")
 
 	# where levels send you
 	Levels.go_to("megaramp")
