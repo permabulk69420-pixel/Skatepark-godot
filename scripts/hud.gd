@@ -14,6 +14,7 @@ var balance_bar: Control
 var balance_marker: ColorRect
 var hint_label: Label
 var status_label: Label
+var score_label: Label
 var message := ""
 var message_time := 0.0
 var hint_time := 14.0
@@ -80,6 +81,14 @@ func _init(parent: Node, p_sim: Skater, level_name: String, hint: String) -> voi
 	status_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	layer.add_child(status_label)
 
+	score_label = make_label("", 20)
+	score_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	score_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	score_label.offset_top = 18.0
+	score_label.offset_right = -24.0
+	layer.add_child(score_label)
+	set_score(0)
+
 
 static func make_label(text: String, size: int) -> Label:
 	var label := Label.new()
@@ -128,6 +137,11 @@ static func marker_x(width: float, bal: float) -> float:
 func say(text: String, seconds: float = 1.4) -> void:
 	message = text
 	message_time = seconds
+
+
+# The running total, top right (a flat screen only: the headset shows a banked chain's points, and the watch will carry the total).
+func set_score(total: int) -> void:
+	score_label.text = "SCORE  %s" % Score.format(total)
 
 
 func set_status(text: String) -> void:

@@ -21,6 +21,7 @@ var sim: Skater
 var rig_control: PlayerRig
 var board_view: BoardView
 var hud: Hud
+var score := Score.new()
 var sfx: Sfx
 var music: Music
 var haptics: Haptics
@@ -105,6 +106,8 @@ func _ready() -> void:
 	sim.event.connect(_on_sim_event)
 
 	hud = Hud.new(self, sim, info.name, (HUB_HINT if level_id == Levels.HUB else CONTROLS_HINT) + "\n\n" + info.blurb)
+	score.chain_changed.connect(_on_chain_changed)
+	score.banked.connect(_on_banked)
 	rig_control = PlayerRig.new(rig, camera, sim, hud.fade_rect, vr)
 	if vr:
 		vr_gauge = VrGauge.new(rig)
@@ -225,6 +228,7 @@ func _process(delta: float) -> void:
 	hands.update(dt)
 	grab.place()                   # ...then each holding hand is fitted onto its edge (after the hands have posed)
 	hud.update(dt)
+	score.update(dt, sim.mode == Skater.Mode.GROUND and sim.balance == null, sim.mode == Skater.Mode.BAIL)
 	if vr_gauge:
 		vr_gauge.update(sim, hud.message, hud.message_time, rig_control.anchor, rig_control.yaw_cal)
 	sfx.update(sim, dt)
@@ -385,6 +389,18 @@ func _on_sim_event(type: String, data: Dictionary) -> void:
 		"catch":
 			if data.quality == "sketchy":
 				hud.say("Sketchy catch", 0.8)
+	score.event(type, data)   # (after the names above: when a trick scores, its points replace the flash)
+
+
+# A trick joined the chain: the chain so far and what it is worth.
+func _on_chain_changed(text: String, points: int) -> void:
+	hud.say("%s   %s" % [text, Score.format(points)], 2.0)
+
+
+# The chain was landed and rolled out.
+func _on_banked(points: int, total: int) -> void:
+	hud.set_score(total)
+	hud.say("+%s   Total %s" % [Score.format(points), Score.format(total)], 2.0)
 
 
 # Sky, sun, fog and exposure for the level (its `look` in levels.gd). `night` is the level's night settings, if it has them.
