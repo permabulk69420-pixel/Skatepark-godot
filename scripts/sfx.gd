@@ -177,6 +177,12 @@ func update(sim: Skater, dt: float) -> void:
 	_fade("grindConcrete", 0.0 if metal else glevel, grate, dt, 0.03)
 
 
+# Paused (the menu is up): the loops die away.
+func hush(dt: float) -> void:
+	for clip in loops:
+		_fade(clip, 0.0, loops[clip].rate, dt, 0.03)
+
+
 # The gain eases towards its target over a time constant (like Web Audio's setTargetAtTime), and so does the pitch.
 func _fade(clip: String, target: float, rate: float, dt: float, tc: float = 0.05) -> void:
 	if not loops.has(clip):

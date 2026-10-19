@@ -28,6 +28,11 @@ var haptics: Haptics
 var vr_gauge: VrGauge
 var hands: VrHands
 var grab: BoardGrab
+var watch: Watch                 # on the left wrist (headset only)
+var watch_menu: WatchMenu
+var aim_controller: XRController3D   # the right hand's pointing pose, for the menu's laser
+var menu_key_was := false
+var menu_escape_was := false
 var detach_was := false
 var hand_balance := HandBalance.new()
 var input := SkateInput.new()
@@ -116,6 +121,19 @@ func _ready() -> void:
 	hands = VrHands.new({"left": left_controller, "right": right_controller} if vr else {})
 	grab = BoardGrab.new(hands, board_view.root, camera, haptics)
 	grab.event.connect(_on_sim_event)
+	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name)
+	watch_menu.chosen.connect(_on_menu_chosen)
+	watch_menu.hovered.connect(func() -> void:
+		if haptics:
+			haptics.pulse(0.15, 12, "right"))
+	if vr:
+		var left_hand := _hand_state("left")
+		if left_hand != null:
+			watch = Watch.new(left_hand.model)
+		aim_controller = _make_controller(&"right_hand")
+		aim_controller.pose = &"aim"
+		aim_controller.name = "right_aim"
+		rig.add_child(aim_controller)
 	sfx = Sfx.new(world)
 	sfx.name = "Sfx"
 	add_child(sfx)
@@ -170,6 +188,11 @@ func _process(delta: float) -> void:
 	held_level_switch = held_level_switch + dt if level_key else 0.0
 	if held_level_switch > LEVEL_SWITCH_HOLD:
 		_go_to(Levels.next_channel(Levels.saved()) if hub != null else Levels.HUB)
+		return
+	if _menu_asked():
+		_set_menu(not watch_menu.is_open)
+	if watch_menu.is_open:
+		_process_menu(dt)
 		return
 	if on_foot:
 		_process_foot(dt)
@@ -234,6 +257,59 @@ func _process(delta: float) -> void:
 	sfx.update(sim, dt)
 	if haptics:
 		haptics.continuous(sim)
+
+
+# M on a keyboard, or a tap of the right index finger on the watch's glass.
+func _menu_asked() -> bool:
+	var key := Input.is_key_pressed(KEY_M)
+	var asked := key and not menu_key_was
+	menu_key_was = key
+	if watch_menu.is_open and not vr:
+		var escape := Input.is_key_pressed(KEY_ESCAPE)
+		asked = asked or (escape and not menu_escape_was)
+		menu_escape_was = escape
+	var right := _hand_state("right")
+	if watch != null and right != null:
+		# (a hand that is holding the board, or squeezing, is not tapping anything)
+		var open_hand := right.trigger() < 0.3 and right.squeeze() < 0.3 and not grab.holding()
+		if watch.update(right.model.index_tip()) and (open_hand or watch_menu.is_open):
+			asked = true
+	return asked
+
+
+func _set_menu(open: bool) -> void:
+	if open == watch_menu.is_open:
+		return
+	if open:
+		watch_menu.open(camera.global_transform)
+	else:
+		watch_menu.close()
+	var right := _hand_state("right")
+	if right != null:
+		right.pointing = open
+	if haptics:
+		haptics.pulse(0.35, 30)
+
+
+# The game is paused while the menu is up: the hands still move, so you can point.
+func _process_menu(dt: float) -> void:
+	hands.update(dt)
+	sfx.hush(dt)
+	if vr:
+		var pointer: Node3D = aim_controller if aim_controller.get_has_tracking_data() else right_controller
+		watch_menu.update(pointer.global_position, -pointer.global_basis.z, right_controller.is_button_pressed("trigger_click"))
+
+
+func _on_menu_chosen(action: String) -> void:
+	match action:
+		"resume":
+			_set_menu(false)
+		"retry":
+			_go_to(level_id)
+		"home":
+			_go_to(Levels.HUB)
+		"exit":
+			get_tree().quit()
 
 
 func _turn_view(dx: float, dy: float) -> void:
@@ -400,6 +476,8 @@ func _on_chain_changed(text: String, points: int) -> void:
 # The chain was landed and rolled out.
 func _on_banked(points: int, total: int) -> void:
 	hud.set_score(total)
+	if watch != null:
+		watch.set_score(total)
 	hud.say("+%s   Total %s" % [Score.format(points), Score.format(total)], 2.0)
 
 
