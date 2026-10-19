@@ -11,6 +11,7 @@ const FLAT_PICK_DISTANCE := 3.0
 const STICK_ON := 0.7
 const STICK_OFF := 0.3
 const PICTURES := "res://assets/previews/%s.jpg"
+const HOLD_MODE := 1                       # how the remote sits in a hand (HubRemote.in_hand)
 const REST := Vector3(0.0, 0.011, 0.0)   # the remote lies on the table, not in it
 
 var screen: MeshInstance3D
@@ -22,6 +23,8 @@ var title: Label
 var hint: Label
 var channel := 0
 var holder := ""                 # "left", "right", "key" or "" (nobody)
+var held_state                    # the VrHands.HandState of the hand that has it (headset)
+var _in_hand := Transform3D.IDENTITY
 var vr := false
 var _latched := false
 var _trigger_was := false
@@ -34,7 +37,7 @@ func _init(p_screen: MeshInstance3D, p_spot: Node3D, parent: Node, start_id: Str
 	screen = p_screen
 	spot = p_spot
 	channel = maxi(0, Levels.PLAYABLE.find(start_id))
-	remote = _make_remote()
+	remote = HubRemote.build()
 	spot.add_child(remote)
 	remote.position = REST
 
@@ -70,33 +73,6 @@ func level_id() -> String:
 	return Levels.PLAYABLE[channel]
 
 
-func _make_remote() -> Node3D:
-	var node := Node3D.new()
-	node.name = "Remote"
-	var body := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.05, 0.02, 0.18)
-	body.mesh = box
-	var dark := StandardMaterial3D.new()
-	dark.albedo_color = Color(0.08, 0.08, 0.09)
-	dark.roughness = 0.5
-	body.material_override = dark
-	node.add_child(body)
-	for i in 3:
-		var button := MeshInstance3D.new()
-		var disc := CylinderMesh.new()
-		disc.top_radius = 0.009
-		disc.bottom_radius = 0.009
-		disc.height = 0.004
-		button.mesh = disc
-		var lit := StandardMaterial3D.new()
-		lit.albedo_color = [Color("c9473b"), Color("e0b63c"), Color("6aa84f")][i]
-		button.material_override = lit
-		button.position = Vector3(0.0, 0.011, -0.05 + 0.04 * i)
-		node.add_child(button)
-	return node
-
-
 func _show() -> void:
 	var id := level_id()
 	var path := PICTURES % id
@@ -117,14 +93,24 @@ func step(by: int) -> void:
 # `pointers`: one per hand (or one for the keyboard): { id, node (what the remote is held by), pos (world), squeeze, stick_x, trigger }.
 # `held_by` is the node the remote should sit in while held.
 func update(pointers: Array) -> void:
+	if held_state != null:
+		remote.global_transform = held_state.model.socket_global() * _in_hand
 	if holder == "":
 		for p: Dictionary in pointers:
 			var was: bool = _squeeze_was.get(p.id, false)
 			var reach := FLAT_PICK_DISTANCE if p.id == "key" else PICK_DISTANCE
 			if p.squeeze and not was and (p.pos as Vector3).distance_to(remote.global_position) < reach:
 				holder = p.id
-				remote.reparent(p.node, false)
-				remote.transform = Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, -0.06)) if p.id != "key" else Transform3D(Basis(Vector3.UP, 0.25), Vector3(0.22, -0.2, -0.5))
+				held_state = p.get("state")
+				if held_state != null:
+					# in the hand: the fingers close round it and it follows the hand's grip
+					held_state.held = true
+					held_state.held_pose = VrHands.GRIP_POSES["medium"]
+					held_state.path_elapsed = 0.0
+					_in_hand = HubRemote.in_hand(p.id, HOLD_MODE)
+				else:
+					remote.reparent(p.node, false)
+					remote.transform = Transform3D(Basis(Vector3.UP, 0.25), Vector3(0.22, -0.2, -0.5))
 				_latched = absf(p.stick_x) > STICK_ON   # a stick already pushed over does not change the channel the moment it is picked up
 				_trigger_was = p.trigger
 				_show()
@@ -151,6 +137,10 @@ func update(pointers: Array) -> void:
 
 
 func _put_down() -> void:
+	if held_state != null:
+		held_state.held = false
+		held_state.held_pose = null
+		held_state = null
 	holder = ""
 	remote.reparent(spot, false)
 	remote.transform = Transform3D(Basis.IDENTITY, REST)
