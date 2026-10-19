@@ -52,7 +52,7 @@ func _ready() -> void:
 		level_id = Levels.take_next()
 	info = Levels.LEVELS[level_id]
 	vr = _start_xr()
-	_build_environment(info.look)
+	_build_environment(info.look, info.get("night", {}))
 	if vr:
 		rig = XROrigin3D.new()
 		camera = XRCamera3D.new()
@@ -92,6 +92,8 @@ func _ready() -> void:
 		loading.text = "The park could not load."
 		push_error("Could not load " + info.file)
 		return
+	if info.has("night"):
+		Night.apply(self, level, info.night)
 	# The collision bodies are only seen by the physics server after a physics step.
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -385,8 +387,8 @@ func _on_sim_event(type: String, data: Dictionary) -> void:
 				hud.say("Sketchy catch", 0.8)
 
 
-# Sky, sun, fog and exposure for the level (its `look` in levels.gd).
-func _build_environment(look: Dictionary) -> void:
+# Sky, sun, fog and exposure for the level (its `look` in levels.gd). `night` is the level's night settings, if it has them.
+func _build_environment(look: Dictionary, night := {}) -> void:
 	var sun_dir := Vector3(look.sunDirection[0], look.sunDirection[1], look.sunDirection[2]).normalized()
 	var sky_material := ProceduralSkyMaterial.new()
 	sky_material.sky_top_color = Color("2f6fbf")
@@ -398,6 +400,8 @@ func _build_environment(look: Dictionary) -> void:
 	sky_material.sun_curve = 0.12
 	var sky := Sky.new()
 	sky.sky_material = sky_material
+	if not night.is_empty():
+		sky = Night.make_sky(look, night)
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
@@ -406,6 +410,8 @@ func _build_environment(look: Dictionary) -> void:
 	if look.has("ambient"):   # a colour mixed into the sky's light (the house: warmer than the blue sky)
 		env.ambient_light_color = Color(look.ambient)
 		env.ambient_light_sky_contribution = look.get("ambientSky", 0.5)
+	if not night.is_empty():
+		Night.light_environment(env)
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES if look.get("toneMapping", "") == "aces" else Environment.TONE_MAPPER_LINEAR
 	env.tonemap_exposure = look.exposure
 	env.fog_enabled = true
