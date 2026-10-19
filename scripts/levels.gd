@@ -79,6 +79,18 @@ const LEVELS := {
 			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,
 		},
 	},
+	"switchyard": {
+		"name": "Switchyard",
+		"file": "res://assets/levels/switchyard.glb",
+		"blurb": "194 × 172 metres · 30-foot vert halfpipe, 20-foot transitions, 15-foot spine, deep flow bowl, 24 stairs and a sweeping boardslide rail · RIFT board",
+		"bounds": {"x": 96.75, "z": 85.75, "cx": 5.0, "cz": 6.0},
+		"camera_far": 280.0,
+		"decals": "Construction|Paint",
+		"look": {
+			"exposure": 0.76, "sun": 3.3, "sunColor": "#ffead3", "sunDirection": [-0.5, 0.62, -0.6],
+			"hemisphere": 0.28, "environment": 0.65, "fog": "#c4d1d4", "fogNear": 210.0, "fogFar": 500.0,
+		},
+	},
 	"megaramp": {
 		"name": "Mega Ramp",
 		"file": "res://assets/levels/megaramp.glb",
@@ -105,7 +117,7 @@ const LEVELS := {
 }
 
 const HUB := "hub"
-const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "megaramp", "flightline"]   # the levels on the TV, in channel order
+const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "switchyard", "megaramp", "flightline"]   # the levels on the TV, in channel order
 const SETTINGS := "user://settings.cfg"
 
 # The level the next scene should open on (set by go_to); empty means the house.

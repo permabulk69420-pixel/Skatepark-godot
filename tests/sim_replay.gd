@@ -13,7 +13,7 @@
 # are ones that are stable.
 extends SceneTree
 
-const LEVEL_IDS := ["gravesend", "megaramp", "flightline", "breakwater", "foundry"]
+const LEVEL_IDS := ["gravesend", "megaramp", "flightline", "breakwater", "foundry", "switchyard"]
 const FIXTURES := "res://tests/fixtures"
 const MODES := ["ground", "air", "grind", "bail", "loop"]
 const POS_TOLERANCE := 0.01   # metres
