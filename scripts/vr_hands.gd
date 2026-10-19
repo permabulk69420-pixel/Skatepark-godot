@@ -30,6 +30,7 @@ class HandState:
 	var home := Transform3D.IDENTITY
 	var joints := {}                # finger -> Array[Joint]
 	var held := false               # holding the board's edge
+	var pointing := false           # showing the menu: the hand points instead of following the trigger and grip
 	var held_pose = null            # { animation, amount } while holding
 	var path_elapsed := 0.0
 	var was_squeezed := false
@@ -113,7 +114,9 @@ func _update_pose(s: HandState, dt: float) -> void:
 	var trigger := s.trigger()
 	var squeeze := s.squeeze()
 	# A hand that holds something (a board grab) takes the authored pose for that grip; the solved path then fits each finger to it.
-	if s.held_pose != null and squeeze > 0.08:
+	if s.pointing:
+		s.model.set_pose("Point", 1.0)
+	elif s.held_pose != null and squeeze > 0.08:
 		s.model.set_pose(s.held_pose.animation, s.held_pose.amount)
 	elif squeeze > 0.08 and trigger > 0.08:
 		s.model.set_pose("Fist", maxf(trigger, squeeze))

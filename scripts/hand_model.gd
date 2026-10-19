@@ -114,6 +114,14 @@ func set_joint(bone: int, amount: float, open: Quaternion, grip: Quaternion, fis
 		skeleton.set_bone_pose_rotation(bone, grip.slerp(fist, (amount - 0.65) / 0.35))
 
 
+# The tip of the index finger in the world: a little way on from the last joint, along the last bone.
+func index_tip() -> Vector3:
+	var bones: Array = finger_bones["index"]
+	var last: Vector3 = (skeleton.global_transform * skeleton.get_bone_global_pose(bones[bones.size() - 1])).origin
+	var before: Vector3 = (skeleton.global_transform * skeleton.get_bone_global_pose(bones[bones.size() - 2])).origin
+	return last + (last - before) * 0.9
+
+
 # The grip socket in the world.
 func socket_global() -> Transform3D:
 	return skeleton.global_transform * skeleton.get_bone_global_pose(grip_bone)
