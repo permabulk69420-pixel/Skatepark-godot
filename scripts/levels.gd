@@ -1,7 +1,7 @@
 # The levels the game can load. Each entry says where its model is and the few things that differ per level: the play area the skater
 # is kept inside (half-extents x/z around an optional centre cx/cz), the intro text, and `look` (optional) to override the lighting:
 # toneMapping ("aces"; anything else is plain linear), exposure, sun (intensity), sunColor, sunDirection ([x, y, z] towards the sun),
-# hemisphere (fill), fog (colour), fogNear, fogFar.
+# hemisphere (fill), fog (colour), fogNear, fogFar. A level can also have `night` (a night version of a scan, see scripts/night.gd).
 # Same layout as the web build's levels.js, so more levels can be added one entry at a time.
 class_name Levels
 extends RefCounted
@@ -31,6 +31,29 @@ const LEVELS := {
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
 			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,
+		},
+	},
+	"gravesendnight": {
+		"name": "Gravesend Night",
+		"file": "res://assets/levels/gravesend.glb",   # the same scan as Gravesend: the night is made in its material (scripts/night.gd)
+		"blurb": "The Gravesend scan after dark · lit by cool white LED floods, with a big pool of light from where the sun was and three lamps · scan by artfletch (CC-BY 4.0) · RIFT board",
+		"bounds": {"x": 29.0, "z": 22.5, "cx": 0.0, "cz": 0.0},
+		"camera_far": 280.0,
+		"look": {
+			# sunDirection is the moon: up and ahead of the spawn (the floodlight below still comes from where the sun was when the scan was photographed)
+			"exposure": 1.0, "sun": 0.25, "sunColor": "#9db8ff", "sunDirection": [-0.45, 0.53, -0.71],
+			"hemisphere": 0.12, "environment": 0.02, "fog": "#03060d", "fogNear": 18.0, "fogFar": 85.0,
+		},
+		"night": {
+			# the moon is up and ahead, to the right of where the rider starts (the faint moonlight on the board comes from it too)
+			"sky": {"moon": [-0.45, 0.53, -0.71], "glow": "#5a4830"},
+			"ambient": "#0b1426",
+			"key": {"direction": [0.31, 0.42, 0.85], "colour": "#bcd6ff", "strength": 1.1, "centre": [0.0, 0.0], "radius": 20.0},
+			"lamps": [
+				{"base": [-24.0, 1.99, -17.0], "height": 9.0, "colour": "#d6e6ff", "power": 1.5, "radius": 15.0, "glow": 9.0},
+				{"base": [23.0, 1.93, 2.0], "height": 9.0, "colour": "#d6e6ff", "power": 1.5, "radius": 15.0, "glow": 9.0},
+				{"base": [-4.0, 2.16, 16.0], "height": 9.0, "colour": "#d6e6ff", "power": 1.5, "radius": 15.0, "glow": 9.0},
+			],
 		},
 	},
 	"breakwater": {
@@ -82,7 +105,7 @@ const LEVELS := {
 }
 
 const HUB := "hub"
-const PLAYABLE := ["gravesend", "foundry", "breakwater", "megaramp", "flightline"]   # the levels on the TV, in channel order
+const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "megaramp", "flightline"]   # the levels on the TV, in channel order
 const SETTINGS := "user://settings.cfg"
 
 # The level the next scene should open on (set by go_to); empty means the house.
