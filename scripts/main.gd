@@ -403,6 +403,9 @@ func _build_environment(look: Dictionary) -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 1.2 * float(look.hemisphere) + 0.3
+	if look.has("ambient"):   # a colour mixed into the sky's light (the house: warmer than the blue sky)
+		env.ambient_light_color = Color(look.ambient)
+		env.ambient_light_sky_contribution = look.get("ambientSky", 0.5)
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES if look.get("toneMapping", "") == "aces" else Environment.TONE_MAPPER_LINEAR
 	env.tonemap_exposure = look.exposure
 	env.fog_enabled = true

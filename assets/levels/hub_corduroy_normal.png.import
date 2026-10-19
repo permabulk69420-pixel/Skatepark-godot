@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dlb3fk337erk0"
-path="res://.godot/imported/hub_hanging_industrial_lamp_arm_2k.jpg-6b04871b8d5d48e7f9192897e0af1c88.ctex"
+uid="uid://bxokpmpnwgdk"
+path="res://.godot/imported/hub_corduroy_normal.png-7581c4fb19dd936869a0edc5044f0b5e.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "b7a8ecd3b1f081129d436fe82633ca93"
+"md5": "5b604984b88b9f86706bedb4a3a33a2d"
 }
 
 [deps]
 
-source_file="res://assets/levels/hub_hanging_industrial_lamp_arm_2k.jpg"
-dest_files=["res://.godot/imported/hub_hanging_industrial_lamp_arm_2k.jpg-6b04871b8d5d48e7f9192897e0af1c88.ctex"]
+source_file="res://assets/levels/hub_corduroy_normal.png"
+dest_files=["res://.godot/imported/hub_corduroy_normal.png-7581c4fb19dd936869a0edc5044f0b5e.ctex"]
 
 [params]
 

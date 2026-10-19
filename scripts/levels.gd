@@ -18,6 +18,7 @@ const LEVELS := {
 		"look": {
 			"exposure": 0.8, "sun": 2.6, "sunColor": "#ffe6c4", "sunDirection": [-0.45, 0.65, -0.55],
 			"hemisphere": 0.45, "environment": 0.4, "fog": "#c4d4de", "fogNear": 120.0, "fogFar": 300.0,
+			"ambient": "#a07a58", "ambientSky": 0.35,
 		},
 	},
 	"gravesend": {

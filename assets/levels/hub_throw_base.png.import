@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bg7761b85igls"
-path="res://.godot/imported/hub_hanging_industrial_lamp_glass_nor_gl_2k.png-c3177806f3ac300063e7c5faa4fd5b01.ctex"
+uid="uid://sqli55r0877o"
+path="res://.godot/imported/hub_throw_base.png-3ea0c232cca7c29a97034ba1d5ae42e5.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "986c743b57acb4c6142f87d08bf446ad"
+"md5": "75196ef9d2a4ff7f19b2840c2ffa3794"
 }
 
 [deps]
 
-source_file="res://assets/levels/hub_hanging_industrial_lamp_glass_nor_gl_2k.png"
-dest_files=["res://.godot/imported/hub_hanging_industrial_lamp_glass_nor_gl_2k.png-c3177806f3ac300063e7c5faa4fd5b01.ctex"]
+source_file="res://assets/levels/hub_throw_base.png"
+dest_files=["res://.godot/imported/hub_throw_base.png-3ea0c232cca7c29a97034ba1d5ae42e5.ctex"]
 
 [params]
 

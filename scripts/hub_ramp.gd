@@ -10,7 +10,9 @@ const FLAT := 8.0
 const WIDTH := 5.0
 const SEGMENTS := 14
 const COPING_RADIUS := 0.035
-const CONCRETE := Color("a4a49f")
+const PLY_BASE := "res://assets/levels/flightline_competitionply_base.webp"   # the same skate ply the big ramps are made of
+const PLY_NORMAL := "res://assets/levels/flightline_competitionply_normal.webp"
+const SHEET := Vector2(2.44, 1.22)   # one sheet of ply: along the pipe, across it
 const COPING := Color("b9bcc0")
 
 
@@ -66,7 +68,9 @@ static func add_to(root: Node3D) -> bool:
 
 	var shown := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
 	var solid := PackedVector3Array()
+	var run := 0.0   # distance along the surface, so the sheets lie flat round the transitions
 	for s: Dictionary in strips:
 		var a: Vector2 = s.a
 		var b: Vector2 = s.b
@@ -85,17 +89,22 @@ static func add_to(root: Node3D) -> bool:
 			shown.append_array(verts)
 			for v in verts:
 				# the normal for each vertex is the one belonging to its end of the strip
-				normals.append(n_a if (v.x == a.x and v.y == a.y) else n_b)
+				var at_a := v.x == a.x and v.y == a.y
+				normals.append(n_a if at_a else n_b)
+				uvs.append(Vector2((run if at_a else run + a.distance_to(b)) / SHEET.x, v.z / SHEET.y))
 			if absf(a.y - HEIGHT) > 0.001 or absf(b.y - HEIGHT) > 0.001 or a.x == b.x:
 				solid.append_array(verts)
+		run += a.distance_to(b)
 
-	var mesh := _mesh(shown, normals)
+	var mesh := _mesh(shown, normals, uvs)
 	var look := MeshInstance3D.new()
 	look.mesh = mesh
 	look.name = "HalfPipe"
 	var material := StandardMaterial3D.new()
-	material.albedo_color = CONCRETE
-	material.roughness = 0.85
+	material.albedo_texture = load(PLY_BASE)
+	material.normal_enabled = true
+	material.normal_texture = load(PLY_NORMAL)
+	material.roughness = 0.8
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	look.material_override = material
 	look.transform = xf * Transform3D(Basis.IDENTITY, Vector3(0.0, 0.012, 0.0))   # a hair above the slab, so the two do not fight
@@ -145,12 +154,19 @@ static func add_to(root: Node3D) -> bool:
 	return true
 
 
-static func _mesh(verts: PackedVector3Array, normals: PackedVector3Array) -> ArrayMesh:
+static func _mesh(verts: PackedVector3Array, normals: PackedVector3Array, uvs := PackedVector2Array()) -> ArrayMesh:
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	if normals.size() == verts.size():
 		arrays[Mesh.ARRAY_NORMAL] = normals
+	if uvs.size() == verts.size():
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	if uvs.size() == verts.size():   # the ply's normal map needs tangents
+		var st := SurfaceTool.new()
+		st.create_from(mesh, 0)
+		st.generate_tangents()
+		mesh = st.commit()
 	return mesh

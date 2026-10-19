@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dia6n5olupier"
-path="res://.godot/imported/hub_paint_inside_normal.png-896daa1779316f1c13031cbd692eeb74.ctex"
+uid="uid://djcbmgr6ekhl3"
+path="res://.godot/imported/hub_corduroy_base.png-dc01fa6f57358708cb565480d5620144.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "d6bcc29e016055499f26df7565a00841"
+"md5": "bdfbe2e0d4bf0ab13d5288389880de33"
 }
 
 [deps]
 
-source_file="res://assets/levels/hub_paint_inside_normal.png"
-dest_files=["res://.godot/imported/hub_paint_inside_normal.png-896daa1779316f1c13031cbd692eeb74.ctex"]
+source_file="res://assets/levels/hub_corduroy_base.png"
+dest_files=["res://.godot/imported/hub_corduroy_base.png-dc01fa6f57358708cb565480d5620144.ctex"]
 
 [params]
 

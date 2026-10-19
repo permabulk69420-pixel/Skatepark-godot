@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cc4oa36dlhbh5"
-path="res://.godot/imported/hub_potted_plant_02_leaves_rough_2k.jpg-eb4bd116b486381e9ea6732263645b35.ctex"
+uid="uid://ckl7yss2wl5kk"
+path="res://.godot/imported/hub_rug_base.png-454d37f7e9922dc006d538fe0be65f16.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "9d0ea9cda6e780782ef432b33caee9ba"
+"md5": "ae541a584ac3dfd8d35b36048a4f91c6"
 }
 
 [deps]
 
-source_file="res://assets/levels/hub_potted_plant_02_leaves_rough_2k.jpg"
-dest_files=["res://.godot/imported/hub_potted_plant_02_leaves_rough_2k.jpg-eb4bd116b486381e9ea6732263645b35.ctex"]
+source_file="res://assets/levels/hub_rug_base.png"
+dest_files=["res://.godot/imported/hub_rug_base.png-454d37f7e9922dc006d538fe0be65f16.ctex"]
 
 [params]
 
