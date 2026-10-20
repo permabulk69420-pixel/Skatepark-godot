@@ -141,7 +141,7 @@ func _ready() -> void:
 	prop = BoardProp.new(world)
 	carry = BoardCarry.new(hands, grab, board_view.root)
 	carry.released.connect(_on_board_released)
-	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name + _foveation_text())
+	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name)
 	grind_hand = HandBalance.pushing_hand("grind")
 	manual_hand = HandBalance.pushing_hand("manual")
 	watch_menu.set_hands(grind_hand, manual_hand)
@@ -200,17 +200,6 @@ func _start_xr() -> bool:
 		if rates is Array and REFRESH_RATE in rates:
 			xr.set("display_refresh_rate", REFRESH_RATE)
 	return true
-
-
-# TEMPORARY, for checking foveation on the headset: the menu's title says what the headset reports ("Foveation 3" when it is
-# available and set to level 3, "no foveation" when the headset says it cannot do it). Nothing on a flat screen.
-func _foveation_text() -> String:
-	var xr := XRServer.find_interface("OpenXR")
-	if not vr or xr == null or not xr.has_method("is_foveation_supported"):
-		return ""
-	if not xr.call("is_foveation_supported"):
-		return "  ·  no foveation"
-	return "  ·  foveation %d%s" % [xr.call("get_foveation_level"), " dynamic" if xr.call("get_foveation_dynamic") else ""]
 
 
 static func _make_controller(tracker: StringName) -> XRController3D:
