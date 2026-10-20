@@ -1,0 +1,19 @@
+{
+  "height_m": 1.8,
+  "width_m": 5.0,
+  "transition_radius_m": 1.8,
+  "flat_bottom_m": 7.2,
+  "deck_depth_m": 1.3,
+  "length_including_decks_m": 13.4,
+  "width_including_stairs_m": 7.85,
+  "stair_rise_m": 0.18,
+  "stair_tread_m": 0.3,
+  "asset_objects": 307,
+  "export_meshes": 9,
+  "render_triangles": 22154,
+  "collision_triangles": 1428,
+  "grind_paths": 9,
+  "rail_paths": 7,
+  "coping_paths": 2,
+  "blender_version": "4.3.2"
+}

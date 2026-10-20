@@ -55,7 +55,7 @@ func run() -> void:
 	check(main.level.markers_with("board_slot").size() == 12, "twelve board slots on the shop wall")
 	check(main.hub.lamps.size() == 6, "six lamps")
 	check(main.hub.tv != null, "a TV with a remote")
-	check(main.level.root.find_child("HalfPipe", true, false) != null and main.level.grind_nodes.size() == 2, "the half pipe is on the slab, coping on both lips")
+	check(main.level.root.find_child("HalfPipe", true, false) != null and main.level.grind_nodes.size() == 9, "the half pipe is on the slab, with both copings and seven handrails grindable")
 
 	# the start: inside the front door, on the raised floor
 	main.foot.update(0.05, Vector2.ZERO, 0.0)
