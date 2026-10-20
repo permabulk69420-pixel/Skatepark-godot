@@ -48,6 +48,8 @@ class Tuning:
 	# Flips: the flip button in the air plus the stick left (kickflip) or right (heelflip), one full turn of the board.
 	const flipTime := 0.46  # seconds for the board to turn all the way round
 	const flipMinAir := 0.05  # seconds in the air before a flip can start
+	const multiFlipWindow := 0.35  # flick the stick the same way again within this long of the last flick and the flip gets another turn…
+	const maxFlipTurns := 3  # …up to a triple
 	const flipCleanRoll := 0.7  # landing within this many radians (~40°) of flat is a clean landing
 	const flipBailRoll := 1.9  # further than this (~110°) from flat and you bail; in between is a sketchy landing
 	const flipSketchySpeed := 0.7  # share of your speed kept on a sketchy landing
