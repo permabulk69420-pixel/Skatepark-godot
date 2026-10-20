@@ -23,6 +23,7 @@ static func build_root() -> Node3D:
 			root = packed.instantiate()
 	if root == null:
 		root = HubBlockout.build()
+	HubDriveway.add_to(root)
 	HubRamp.add_to(root)
 	return root
 
