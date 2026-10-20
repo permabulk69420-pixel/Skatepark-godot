@@ -546,7 +546,9 @@ func manual_step(h: float, sp: float) -> void:
 	var instab := minf(T.manualInstab0 + T.manualInstabGrow * m.time, T.manualInstabMax)
 	var wobble := T.manualWobble * (0.6 * sin(2.1 * m.time + m.p1) + 0.4 * sin(4.9 * m.time + m.p2))
 	# The meter is the interface: a push to the right moves the marker right, whichever way the board is leaning.
-	var acc := instab * m.bal + wobble + T.manualControl * lean - T.manualDamp * m.bal_vel
+	# The first moments of a manual the pull towards falling is weaker, as on a grind, so there is time to get the hands up.
+	var grace := lerpf(T.balGraceStart, 1.0, clampf(m.time / T.balGrace, 0.0, 1.0))
+	var acc := (instab * m.bal + wobble) * grace + T.manualControl * lean - T.manualDamp * m.bal_vel
 	m.bal_vel += acc * h
 	m.bal += m.bal_vel * h
 	if absf(m.bal) >= 1.0:
