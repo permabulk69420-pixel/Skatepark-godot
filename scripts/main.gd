@@ -140,6 +140,7 @@ func _ready() -> void:
 		run = Run.new(info.run)
 		run.build_gates(self)
 		face_card = FaceCard.new(vr, camera, hud.layer)
+		sim.bail_to_spawn = true   # (a bail in a run starts it all again from the top: the clock, the score and you)
 		_show_time()
 	sfx = Sfx.new(world)
 	sfx.name = "Sfx"
