@@ -68,6 +68,8 @@ class Flip:
 	var angle := 0.0
 	var progress := 0.0
 	var kick := true
+	var turns := 1             # how many full turns this flip is going for (a double or triple flip has more)
+	var prefix := ""           # "Fakie " or ""
 	var name := ""
 	var varial := ""
 
@@ -176,6 +178,8 @@ var trick_controls := TrickControls.new()
 var completed_tricks: Array[String] = []   # board tricks completed in this air, credited only on a landing or rail catch
 var flip: Flip = null
 var flip_roll := 0.0
+var multi_out := false             # the stick is still pushed out from the flick that started (or lengthened) the current flip
+var multi_t := 0.0                 # when that was
 var spin_lock := false
 var shuv: Shuv = null
 var shuv_yaw := 0.0
@@ -396,6 +400,7 @@ func update(input: Command, dt: float) -> void:
 		mode == Mode.AIR and air_time >= T.flipMinAir and flip == null and shuv == null)
 	if trick != null:
 		start_trick(trick.flip, trick.shuv)
+	multi_flip_step(input.trick_stick)
 	detect_flick()
 
 	var jump := input.jump
@@ -881,8 +886,8 @@ func air_step(h: float) -> void:
 	# Trick selection is already complete for this input frame; physics only animates it.
 	if flip != null:
 		var f := flip
-		f.progress = clampf(f.progress + h / T.flipTime, 0.0, 1.0)
-		f.angle = f.spin_sign * TAU * trick_rotation_ease(f.progress)
+		f.progress = clampf(f.progress + h / (T.flipTime * f.turns), 0.0, 1.0)
+		f.angle = f.spin_sign * TAU * f.turns * trick_rotation_ease(f.progress)
 		flip_roll = f.angle
 	if shuv != null and not shuv.done:
 		var s := shuv
@@ -892,7 +897,7 @@ func air_step(h: float) -> void:
 		if s.progress >= 1.0:
 			commit_shuv()
 	finish_air_trick()
-	if spin_lock and (flip == null or absf(flip.angle) >= TAU) and (shuv == null or shuv.done) and absf(steer) < T.airSpinDeadzone:
+	if spin_lock and (flip == null or flip.progress >= 1.0) and (shuv == null or shuv.done) and absf(steer) < T.airSpinDeadzone:
 		spin_lock = false
 	var spin_target := 0.0 if (spin_lock or trick_controls.pending) else -spin_input * T.airSpinRate
 	spin_vel = damp(spin_vel, spin_target, T.airSpinResponse, h)
@@ -937,8 +942,55 @@ func make_flip(kick: bool) -> Flip:
 	f.angle = 0.0
 	f.progress = 0.0
 	f.kick = kick
-	f.name = trick_prefix + ("Kickflip" if kick else "Heelflip")
+	f.prefix = trick_prefix
+	f.name = flip_label(f, 1)
 	return f
+
+
+# "Kickflip", "Double Kickflip", "Triple Kickflip" (and the heelflips), with "Fakie " in front if it was one.
+static func flip_label(f: Flip, turns: int) -> String:
+	return f.prefix + ["", "", "Double ", "Triple "][clampi(turns, 1, 3)] + ("Kickflip" if f.kick else "Heelflip")
+
+
+# What a flip that lands now is worth a name for: the turns it has really done, not the ones it was going for.
+func flip_credit_name(f: Flip) -> String:
+	return flip_label(f, maxi(1, int(js_round(absf(f.angle) / TAU))))
+
+
+# The progress at which a flip with `turns` turns has done `done` turns' worth (the inverse of the rotation ease).
+static func flip_progress_for(done_fraction: float) -> float:
+	var lo := 0.0
+	var hi := 1.0
+	for i in 24:
+		var mid := (lo + hi) / 2.0
+		if trick_rotation_ease(mid) < done_fraction:
+			lo = mid
+		else:
+			hi = mid
+	return (lo + hi) / 2.0
+
+
+# Flicking the stick the same way again, soon after the last flick, gives a started kickflip or heelflip another turn (double, triple).
+# The flip carries on from exactly where it is, so nothing jumps: it just has further to go.
+func multi_flip_step(stick: Vector2) -> void:
+	var f := flip
+	if f == null or shuv != null or f.varial != "" or f.progress >= 1.0:
+		multi_out = false
+		return
+	var side := "left" if f.kick else "right"
+	if TrickControls.stick_direction(stick.x, stick.y) != side:
+		multi_out = false
+		return
+	if multi_out:
+		return
+	multi_out = true
+	if f.turns < T.maxFlipTurns and clock - multi_t <= T.multiFlipWindow:
+		var done := trick_rotation_ease(f.progress) * float(f.turns)
+		f.turns += 1
+		f.progress = flip_progress_for(done / float(f.turns))
+		f.name = flip_label(f, f.turns)
+		multi_t = clock
+		event.emit("flipStart", {"name": f.name})
 
 
 func make_shuv(bs: bool) -> Shuv:
@@ -969,6 +1021,8 @@ func start_trick(flip_kick, shuv_bs) -> bool:
 		shuv = make_shuv(shuv_bs)
 	if flip != null and shuv != null:
 		flip.varial = "%sVarial %s" % [trick_prefix, "Kickflip" if flip.kick else "Heelflip"]
+	multi_out = true   # (the stick is out: it is the push that started this)
+	multi_t = clock
 	trick_controls.reset()
 	spin_lock = true
 	var shown := flip.varial if (flip != null and flip.varial != "") else (flip.name if flip != null else shuv.name)
@@ -1046,7 +1100,7 @@ func trick_credit() -> String:
 	if flip_ok and shuv_ok:
 		current = f.varial if f.varial != "" else f.name
 	elif flip_ok:
-		current = f.name
+		current = flip_credit_name(f)
 	elif shuv_ok:
 		current = s.name
 	var parts := PackedStringArray()
