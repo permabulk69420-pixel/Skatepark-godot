@@ -1,0 +1,76 @@
+{
+  "godot_version": "4.4.1.stable.official.49a5bc7b6",
+  "suites": [
+    {
+      "suite": "halfpipe_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 95
+    },
+    {
+      "suite": "vr_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 29
+    },
+    {
+      "suite": "hands_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 55
+    },
+    {
+      "suite": "hub_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 36
+    },
+    {
+      "suite": "level_switch",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 8
+    },
+    {
+      "suite": "score_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 35
+    },
+    {
+      "suite": "watch_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 26
+    },
+    {
+      "suite": "run_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 34
+    },
+    {
+      "suite": "grind_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 4
+    },
+    {
+      "suite": "board_prop_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 10
+    }
+  ],
+  "all_suites_passed": true,
+  "assertions_passed": 332,
+  "glb_meshes": 9,
+  "glb_triangles": 22154,
+  "collision_triangles": 1428,
+  "coping_grind_paths": 2,
+  "handrail_grind_paths": 7,
+  "limitations": [
+    "Actual headset rendering and frame rate were not tested.",
+    "Existing headless suites can log resource and audio cleanup warnings on shutdown."
+  ]
+}
