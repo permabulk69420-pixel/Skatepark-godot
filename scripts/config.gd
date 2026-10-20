@@ -121,7 +121,6 @@ class Tuning:
 	const balWobble := 1.0
 	const balControl := 7.5
 	const balDamp := 1.4
-	const balEntryScale := 0.4  # how far off-centre a sloppy catch starts the meter (a perfect one starts it in the middle)
 	const balGrace := 0.7  # seconds at the start of a grind while the pull towards falling comes in from balGraceStart up to full…
 	const balGraceStart := 0.3  # …starting at this share of it: time to get your hands up
 	# Nosegrind / 5-0: in a 50-50, hold the stick up (front truck on the rail, tail up) or down (back truck, nose up).

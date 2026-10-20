@@ -1609,7 +1609,6 @@ func start_grind(c: Dictionary, np: Vector3, np_is_pos := false) -> bool:
 	var seg: GrindPath.Segment = c.seg
 	var t: float = c.t
 	var gmode: String = c.mode
-	var theta: float = c.theta
 	var s := seg.start + t * seg.length
 	var gs := vel.dot(seg.dir)
 	# Square-on to coping and nearly stopped is not a failed grind, it is an axle stall (rock to fakie).
@@ -1675,14 +1674,7 @@ func start_grind(c: Dictionary, np: Vector3, np_is_pos := false) -> bool:
 	if np_is_pos:
 		np = pos   # (the web build's np was this very vector, so it now reads as the spot on the rail)
 	g.snap = np - pos
-	# Sloppy entries start the meter off-centre: lateral error and angle error both count.
-	var limit: float = c.get("reach", T.stallLateral if (gmode == "slide" and path.kind == "coping") else board_reach(0.0 if gmode == "truck" else PI / 2.0))
-	var angle_limit: float = T.grindSplit
-	var dev := theta if gmode == "truck" else PI / 2.0 - theta
-	var off := Vector3(np.x - (seg.a.x + (seg.b.x - seg.a.x) * t), 0.0, np.z - (seg.a.z + (seg.b.z - seg.a.z) * t))
-	var lateral := off.dot(g.tilt)
-	var ang_side := sign_or_one(wrap_angle(path_yaw + offset - heading))
-	g.bal = clampf(T.balEntryScale * (0.6 * (lateral / limit) + 0.4 * ang_side * (dev / angle_limit)), -0.85, 0.85)
+	# However the board arrived, the meter starts in the middle.
 	g.name = "Axle Stall" if stall else "%s%s" % ["Coping " if path.kind == "coping" else "", "50-50" if gmode == "truck" else "Boardslide"]
 	pos = np
 	place_on_rail(g, 0.0)
