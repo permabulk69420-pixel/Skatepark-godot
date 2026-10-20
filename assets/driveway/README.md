@@ -5,6 +5,8 @@ the house. It extends six metres outside the front fence, then turns behind
 the house to join the half-pipe slab. Contraction joints are visual only; the
 riding surface is continuous. Two timber/steel gates stand open 105 degrees
 outwards. Gates and posts have collision; no grind paths are added.
+The existing exterior dirt terrain also receives collision so stepping off the
+paving outside the gate does not fall through the scenery.
 
 The original house GLB is preserved. `fence_opening.glb` supplies replacement
 boundary render/collision meshes with a 5.2 m opening at x=-12.5, north=-12 m.

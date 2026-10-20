@@ -56,6 +56,18 @@ static func add_to(root: Node3D) -> bool:
 	var surface := pavement.commit()
 	_add_mesh(driveway, "Driveway_Concrete", surface, concrete)
 	_add_mesh(driveway, "COL_Driveway_Concrete", surface, null)
+	# The old closed fence hid an exterior terrain ring with no physics. Once the
+	# gate is open, its dirt must support feet/wheels too, including beside the paving.
+	var verge := SurfaceTool.new()
+	verge.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for rect: Rect2 in [Rect2(-250, -250, 230, 500), Rect2(20, -250, 230, 500),
+		Rect2(-20, -250, 40, 238), Rect2(-20, 30, 40, 220)]:
+		var corners := [rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
+			Vector2(rect.position.x, rect.end.y)]
+		for i in [0, 2, 1, 0, 3, 2]:
+			var p: Vector2 = corners[i]
+			verge.add_vertex(Vector3(p.x, 0, -p.y))
+	_add_mesh(driveway, "COL_Driveway_ExteriorDirt", verge.commit(), null)
 
 	var joints := SurfaceTool.new()
 	joints.begin(Mesh.PRIMITIVE_TRIANGLES)
