@@ -1,5 +1,5 @@
 # Every number that decides how the skateboarding feels lives here. Metres, seconds, radians.
-# Generated from the web build's config.js with the same names, so a value can be compared line for line.
+# (Started as the web build's config.js; it has been tuned since and no longer matches it.)
 class_name Config
 
 class Board:
@@ -11,18 +11,6 @@ class Board:
 	const wheelHalfTrack := 0.082
 	const wheelHalfBase := 0.239
 	const length := 0.81
-
-# Extra forgiveness for catching and staying on rails and copings, added to the web build's numbers (below) while `Skater.generous` is set.
-# The game sets it; the web-parity replay (tests/sim_replay.gd) does not, so it still checks the sim against the web build exactly.
-class Generous:
-	const grindAlign := 0.18       # rad: 50-50 within 30° + 10° of parallel
-	const slideAlign := 0.18       # rad: boardslide within 30° + 10° of perpendicular
-	const truckLateral := 0.04     # metres: the rail may be this much further from the board's centreline
-	const slideLateral := 0.05     # metres: and from the middle of the deck for a boardslide
-	const catchBelow := 0.05       # metres: the board may be this much lower than the rail and still catch it
-	const catchAbove := 0.04       # metres: or higher
-	const catchMaxRise := 0.6      # m/s: still rising this much faster and it can still catch
-	const grindArmWindow := 0.15   # seconds longer that one press of the grind button stays live
 
 class Tuning:
 	const gravity := 9.81
@@ -106,20 +94,20 @@ class Tuning:
 	const killY := -12.0
 
 	# Grinding
-	const grindAlign := 0.52  # rad (30°) from parallel for a 50-50
-	const slideAlign := 0.52  # rad from perpendicular for a boardslide
-	const truckLateral := 0.11  # how far the rail may be from the board's centreline
-	const slideLateral := 0.15  # how far from the middle of the deck a boardslide can catch
-	const catchBelow := 0.07
-	const catchAbove := 0.05
-	const catchMaxRise := 1.0
+	const grindAlign := 0.70  # rad (40°) from parallel for a 50-50
+	const slideAlign := 0.70  # rad (40°) from perpendicular for a boardslide
+	const truckLateral := 0.15  # how far the rail may be from the board's centreline
+	const slideLateral := 0.20  # how far from the middle of the deck a boardslide can catch
+	const catchBelow := 0.12
+	const catchAbove := 0.09
+	const catchMaxRise := 1.6
 	const grindMinSpeed := 0.9
 	const magnetReach := 0.7  # press grind within this far (horizontally) of a coping, up the wall or on the deck, and it latches on…
 	const magnetBelow := 0.9  # …if the board is no more than this far below the lip…
 	const magnetAbove := 0.2  # …or this far above it
 	const magnetMinSpeed := 1.5  # …and is moving along it at least this fast (m/s)
 	const magnetTruckAngle := 0.8  # heading within this (rad) of parallel to the coping is a 50-50, otherwise a boardslide
-	const grindArmWindow := 0.4  # one press of the grind button catches the first rail or coping the board touches in this many seconds
+	const grindArmWindow := 0.55  # one press of the grind button catches the first rail or coping the board touches in this many seconds
 	const grindStallSpeed := 0.35
 	const copingSlideMinSpeed := 2.2  # a coping boardslide needs this much speed along the lip to catch
 	const copingSlideEnd := 1.2  # …and ends (into the pit) if it slows below this

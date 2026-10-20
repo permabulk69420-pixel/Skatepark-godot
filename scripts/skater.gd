@@ -215,7 +215,6 @@ var bail_time := 0.0
 var bail_board: BailBoard = null
 var safe := SpawnPoint.new()
 var spawn := SpawnPoint.new()
-var generous := false             # extra forgiveness catching and staying on rails and copings (Config.Generous); the game sets it
 var bail_to_spawn := false        # a bail puts you back at the start rather than where you were (a timed run)
 var wheels := Wheels.new()
 
@@ -414,7 +413,7 @@ func update(input: Command, dt: float) -> void:
 	# It is the press that counts, not holding it, and a catch uses the press up.
 	grind_held = input.grind
 	if grind_held and not grind_was:
-		grind_arm = T.grindArmWindow + (Config.Generous.grindArmWindow if generous else 0.0)
+		grind_arm = T.grindArmWindow
 	grind_was = grind_held
 	grind_arm = maxf(0.0, grind_arm - dt)
 	track_body(input.body_y, dt)
@@ -1462,29 +1461,10 @@ func fit_plane(w: Wheels) -> void:
 
 
 # ----- grinding --------------------------------------------------------------------------------------------
-func _grind_align() -> float:
-	return T.grindAlign + (Config.Generous.grindAlign if generous else 0.0)
-
-
-func _slide_align() -> float:
-	return T.slideAlign + (Config.Generous.slideAlign if generous else 0.0)
-
-
-func _truck_lateral() -> float:
-	return T.truckLateral + (Config.Generous.truckLateral if generous else 0.0)
-
-
-# How far from the line a boardslide (or a coping stall) can still catch.
-func _slide_lateral(path: GrindPath) -> float:
-	if path.kind == "coping":
-		return T.stallLateral
-	return T.slideLateral + (Config.Generous.slideLateral if generous else 0.0)
-
-
 func try_grind(np: Vector3, h: float) -> bool:
 	if require_grind and grind_arm <= 0.0:
 		return false
-	if vel.y > T.catchMaxRise + (Config.Generous.catchMaxRise if generous else 0.0):
+	if vel.y > T.catchMaxRise:
 		return false
 	var hv := heading_vec(heading)
 	var best = null
@@ -1511,15 +1491,13 @@ func try_grind(np: Vector3, h: float) -> bool:
 			var cx := seg.a.x + abx * t
 			var cz := seg.a.z + abz * t
 			var d := hypot(np.x - cx, np.z - cz)
-			var slide_lateral := _slide_lateral(path)
-			var truck_lateral := _truck_lateral()
-			if d > slide_lateral:
+			if d > (T.stallLateral if path.kind == "coping" else T.slideLateral):
 				continue
 			var theta := acos(clampf(absf(hv.x * seg.dir_h.x + hv.z * seg.dir_h.y), 0.0, 1.0))
 			var gmode := ""
-			if theta <= _grind_align() and d <= truck_lateral:
+			if theta <= T.grindAlign and d <= T.truckLateral:
 				gmode = "truck"
-			elif theta >= PI / 2.0 - _slide_align() and d <= slide_lateral:
+			elif theta >= PI / 2.0 - T.slideAlign and d <= (T.stallLateral if path.kind == "coping" else T.slideLateral):
 				gmode = "slide"
 			if gmode == "":
 				continue
@@ -1527,9 +1505,9 @@ func try_grind(np: Vector3, h: float) -> bool:
 				continue
 			var top := seg.a.y + (seg.b.y - seg.a.y) * t + path.top_offset
 			var dy := np.y + (BOARD.truckBottom if gmode == "truck" else path.slide_contact) - top
-			if dy < -(T.catchBelow + (Config.Generous.catchBelow if generous else 0.0)) or dy > T.catchAbove + (Config.Generous.catchAbove if generous else 0.0) + maxf(0.0, -vel.y * h):
+			if dy < -T.catchBelow or dy > T.catchAbove + maxf(0.0, -vel.y * h):
 				continue
-			var lateral_ref: float = truck_lateral if gmode == "truck" else slide_lateral
+			var lateral_ref: float = T.truckLateral if gmode == "truck" else (T.stallLateral if path.kind == "coping" else T.slideLateral)
 			var score := d / lateral_ref + absf(dy) / 0.1
 			if score < best_score:
 				best_score = score
@@ -1700,8 +1678,8 @@ func start_grind(c: Dictionary, np: Vector3, np_is_pos := false) -> bool:
 		np = pos   # (the web build's np was this very vector, so it now reads as the spot on the rail)
 	g.snap = np - pos
 	# Sloppy entries start the meter off-centre: lateral error and angle error both count.
-	var limit: float = _truck_lateral() if gmode == "truck" else _slide_lateral(path)
-	var angle_limit: float = _grind_align() if gmode == "truck" else _slide_align()
+	var limit: float = T.truckLateral if gmode == "truck" else (T.stallLateral if path.kind == "coping" else T.slideLateral)
+	var angle_limit: float = T.grindAlign if gmode == "truck" else T.slideAlign
 	var dev := theta if gmode == "truck" else PI / 2.0 - theta
 	var off := Vector3(np.x - (seg.a.x + (seg.b.x - seg.a.x) * t), 0.0, np.z - (seg.a.z + (seg.b.z - seg.a.z) * t))
 	var lateral := off.dot(g.tilt)
