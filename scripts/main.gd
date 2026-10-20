@@ -28,6 +28,8 @@ var haptics: Haptics
 var vr_gauge: VrGauge
 var hands: VrHands
 var grab: BoardGrab
+var run: Run                     # a timed run (null in a level without one)
+var face_card: FaceCard
 var watch: Watch                 # on the left wrist (headset only)
 var watch_menu: WatchMenu
 var aim_controller: XRController3D   # the right hand's pointing pose, for the menu's laser
@@ -134,6 +136,11 @@ func _ready() -> void:
 		aim_controller.pose = &"aim"
 		aim_controller.name = "right_aim"
 		rig.add_child(aim_controller)
+	if info.has("run"):
+		run = Run.new(info.run)
+		run.build_gates(self)
+		face_card = FaceCard.new(vr, camera, hud.layer)
+		_show_time()
 	sfx = Sfx.new(world)
 	sfx.name = "Sfx"
 	add_child(sfx)
@@ -235,7 +242,10 @@ func _process(delta: float) -> void:
 			_stand_up(level.spawn_pos, level.spawn_heading)
 			return
 		sim.respawn(sim.spawn)
+	var before := sim.pos
 	sim.update(command, dt)
+	if run != null:
+		_update_run(dt, before)
 	rig_control.update(dt)
 	level.lods.update(camera.global_position)
 	board_view.update(sim, dt)
@@ -251,12 +261,53 @@ func _process(delta: float) -> void:
 	hands.update(dt)
 	grab.place()                   # ...then each holding hand is fitted onto its edge (after the hands have posed)
 	hud.update(dt)
+	if face_card != null:
+		face_card.update(dt)
 	score.update(dt, sim.mode == Skater.Mode.GROUND and sim.balance == null, sim.mode == Skater.Mode.BAIL)
 	if vr_gauge:
 		vr_gauge.update(sim, hud.message, hud.message_time, rig_control.anchor, rig_control.yaw_cal)
 	sfx.update(sim, dt)
 	if haptics:
 		haptics.continuous(sim)
+
+
+# The run's clock, and what happens at its gates.
+func _update_run(dt: float, before: Vector3) -> void:
+	var happened := run.update(dt, before, sim.pos)
+	if happened == "start":
+		score.reset()
+		_show_score()
+		face_card.show_card("GO!", [], 1.0)
+		if haptics:
+			haptics.pulse(0.6, 80)
+	elif happened == "finish":
+		run.final_score = score.total + score.chain_points()   # (a trick still in the air as you go over counts)
+		face_card.show_card("FINISH", ["TIME  " + Run.format_time(run.time), "SCORE  " + Score.format(run.final_score)], 12.0)
+		_show_score(run.final_score)
+		if haptics:
+			haptics.pulse(0.8, 150)
+	_show_time()
+
+
+func _restart_run() -> void:
+	run.reset()
+	score.reset()
+	face_card.hide_card()
+	_show_score()
+
+
+func _show_time() -> void:
+	var text := Run.format_time(run.time)
+	hud.set_time(text)
+	if watch != null:
+		watch.set_time(text)
+
+
+func _show_score(total := -1) -> void:
+	var shown := score.total if total < 0 else total
+	hud.set_score(shown)
+	if watch != null:
+		watch.set_score(shown)
 
 
 # M on a keyboard, or a tap of the right index finger on the watch's glass.
@@ -435,6 +486,8 @@ func _on_sim_event(type: String, data: Dictionary) -> void:
 	sfx.event(type, data)
 	if haptics:
 		haptics.event(type, data)
+	if type == "respawn" and run != null and face_card != null and sim.pos.distance_to(sim.spawn.pos) < 1.0:
+		_restart_run()   # (back on the start spot: the run begins again from nothing)
 	match type:
 		"flipStart":
 			hud.say(data.name, 1.6)
@@ -475,9 +528,8 @@ func _on_chain_changed(text: String, points: int) -> void:
 
 # The chain was landed and rolled out.
 func _on_banked(points: int, total: int) -> void:
-	hud.set_score(total)
-	if watch != null:
-		watch.set_score(total)
+	if run == null or run.state != Run.State.DONE:
+		_show_score()   # (the finished run's score stays put)
 	hud.say("+%s   Total %s" % [Score.format(points), Score.format(total)], 2.0)
 
 

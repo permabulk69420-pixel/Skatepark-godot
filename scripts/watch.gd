@@ -20,6 +20,7 @@ var face: Node3D              # the middle of the glass, +Y out of it
 var viewport: SubViewport
 var caption: Label
 var number: Label
+var clock: Label              # a run's time, under the score (empty when the level has no run)
 var armed := true
 
 
@@ -49,14 +50,14 @@ func _init(model: HandModel) -> void:
 	column.add_child(caption)
 	number = _label("", 100, SCORE_COLOUR)
 	column.add_child(number)
+	clock = _label("", 50, CAPTION_COLOUR)
+	column.add_child(clock)
 	set_score(0)
 
 	var screen := root.find_child("Watch_Screen", true, false) as MeshInstance3D
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_texture = viewport.get_texture()
-	material.uv1_scale = Vector3(-1.0, -1.0, 1.0)    # (the screen's UVs are turned half way round: upright to the wearer, crown towards the fingers)
-	material.uv1_offset = Vector3(1.0, 1.0, 0.0)
 	screen.material_override = material
 
 
@@ -73,6 +74,11 @@ func set_score(total: int) -> void:
 	var text := Score.format(total)
 	number.text = text
 	number.add_theme_font_size_override("font_size", font_size_for(text))
+
+
+func set_time(text: String) -> void:
+	if clock.text != text:
+		clock.text = text
 
 
 # Big for a short number, smaller as it grows, so it always fits across the glass.
