@@ -31,7 +31,6 @@ class Command:
 	var trick_stick := Vector2.ZERO
 	var body_y := NAN             # head height (VR only)
 	var recenter := false
-	var to_spawn := false
 	var toggle_stance := false
 
 

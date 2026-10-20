@@ -2,7 +2,7 @@
 # and the Quest controllers drive it; otherwise it plays on a flat screen with a keyboard or gamepad.
 extends Node3D
 
-const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · hold R: back to the entrance · Z stance · hold L: back home\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance, hold X entrance\nHeadset: hold the left menu button to go back home"
+const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · Z stance · hold L: back home\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance\nHeadset: hold the left menu button to go back home"
 const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
 const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go home (or, at home, to the next level)
 const STEP_OFF_HOLD := 0.6       # seconds the right stick is held down (Q on a keyboard: a tap) to step off the board
@@ -253,11 +253,6 @@ func _process(delta: float) -> void:
 			command.jump = false
 		else:
 			step_on_guard = false
-	if command.to_spawn:
-		if hub != null:
-			_stand_up(level.spawn_pos, level.spawn_heading)
-			return
-		sim.respawn(sim.spawn)
 	var before := sim.pos
 	sim.update(command, dt)
 	if run != null:

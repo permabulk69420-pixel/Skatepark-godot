@@ -6,14 +6,12 @@
 #                                 down-left/down-right = varial kickflip/heelflip; up does nothing
 #   left trigger / C / pad left trigger   in the air while holding the board in a grab: take the board off your feet
 #   left Y / Z / pad Y      switch stance
-#   left X held / R held / pad X held   back to the entrance
 #   both grips held (on the ground)     stand on the board where you are (the headset only)
 class_name SkateInput
 extends RefCounted
 
 const DEADZONE := 0.15
 
-var held_spawn := 0.0
 var held_recenter := 0.0
 var key_stance_was := false
 var pad_stance_was := false
@@ -46,7 +44,6 @@ func poll(dt: float) -> Skater.Command:
 	var key_stance := Input.is_key_pressed(KEY_Z)
 	var toggle_stance := key_stance and not key_stance_was
 	key_stance_was = key_stance
-	var spawn_held := Input.is_key_pressed(KEY_R)
 	var stick := Vector2(steer, -drive)   # on a keyboard the stick is the steer/drive keys
 	var has_stick := false                # a real stick is driving the trick controls (gamepad or controller)
 	var in_vr := vr_left != null and vr_right != null
@@ -67,7 +64,6 @@ func poll(dt: float) -> Skater.Command:
 		flip = flip or Input.is_joy_button_pressed(pad, JOY_BUTTON_B)
 		grind = grind or Input.is_joy_button_pressed(pad, JOY_BUTTON_RIGHT_SHOULDER) or Input.get_joy_axis(pad, JOY_AXIS_TRIGGER_RIGHT) > 0.5
 		detach = detach or Input.is_joy_button_pressed(pad, JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(pad, JOY_AXIS_TRIGGER_LEFT) > 0.5
-		spawn_held = spawn_held or Input.is_joy_button_pressed(pad, JOY_BUTTON_X)
 		var pad_stance := Input.is_joy_button_pressed(pad, JOY_BUTTON_Y)
 		toggle_stance = toggle_stance or (pad_stance and not pad_stance_was)
 		pad_stance_was = pad_stance
@@ -81,7 +77,6 @@ func poll(dt: float) -> Skater.Command:
 		stick = Vector2(s.x, -s.y)           # …the trick stick works in screen terms: up = −y
 		has_stick = true
 		left_squeeze = vr_left.is_button_pressed("grip_click")
-		spawn_held = spawn_held or vr_left.is_button_pressed("ax_button")   # left X
 		var left_y: bool = vr_left.is_button_pressed("by_button")
 		toggle_stance = toggle_stance or (left_y and not vr_stance_was)
 		vr_stance_was = left_y
@@ -91,17 +86,12 @@ func poll(dt: float) -> Skater.Command:
 		flip = flip or vr_right.is_button_pressed("by_button")                # right B
 		right_squeeze = vr_right.is_button_pressed("grip_click")
 
-	# Held R / left X / pad X takes you back to the entrance; both grips held stands you on the board where you are.
-	held_spawn = held_spawn + dt if spawn_held else 0.0
+	# Both grips held stands you on the board where you are.
 	held_recenter = held_recenter + dt if (left_squeeze and right_squeeze and not block_recenter) else 0.0
-	var to_spawn := false
 	var recenter := false
 	if held_recenter > 0.6:
 		recenter = true
 		held_recenter = -1e9
-	if held_spawn > 0.8:
-		to_spawn = true
-		held_spawn = -1e9
 
 	c.steer = clampf(steer, -1.0, 1.0)
 	c.drive = clampf(drive, -1.0, 1.0)
@@ -111,7 +101,6 @@ func poll(dt: float) -> Skater.Command:
 	c.grind = grind
 	c.flip = flip
 	c.detach = detach
-	c.to_spawn = to_spawn
 	c.recenter = recenter
 	c.toggle_stance = toggle_stance
 	c.grabbing = false
