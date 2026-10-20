@@ -1250,7 +1250,9 @@ func land(has_normal: bool, normal: Vector3) -> void:
 	var impact := maxf(0.0, -vel.dot(n))
 	var tmp := vel + n * (-vel.dot(n))
 	var flat_speed := tmp.length()
-	if flat_speed > T.landAngleMinSpeed:
+	# A short hop with nothing done in it is just rolling over a bump: it cannot bail you for the angle or the hardness of the landing.
+	var bump := air_time < T.bumpHopTime and credit == "" and not sketchy
+	if flat_speed > T.landAngleMinSpeed and not bump:
 		# Compare along the surface, not along the horizontal, so landing on a wall is judged fairly.
 		var hv := heading_vec(heading)
 		var f := on_surface(hv, n)
@@ -1260,7 +1262,7 @@ func land(has_normal: bool, normal: Vector3) -> void:
 		if align > T.landMaxAngle:
 			bail("landing")
 			return
-	if impact > T.landBailImpact:
+	if impact > T.landBailImpact and not bump:
 		bail("impact")
 		return
 	vel = tmp

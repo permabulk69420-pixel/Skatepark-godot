@@ -129,7 +129,7 @@ const LEVELS := {
 		"decals": "Paint",
 		# (The same kind of run as Flightline's: the start line at the lip of the roll-in, the finish on the flat before the vert.)
 		"run": {
-			"start": {"pos": [-0.1, 224.0, -1.0], "forward": [0.0, 0.0, -1.0], "half_width": 7.3, "min_y": 190.0},
+			"start": {"pos": [0.05, 224.0, -1.0], "forward": [0.0, 0.0, -1.0], "half_width": 6.8, "min_y": 190.0, "depth": 1.2},
 			"finish": {"pos": [-10.75, 23.7, -1176.0], "forward": [0.0, 0.0, -1.0], "half_width": 11.6},
 		},
 		"look": {

@@ -20,6 +20,7 @@ class Gate:
 	var forward := Vector3(0, 0, -1)
 	var half_width := 8.0
 	var min_y := -1e9
+	var depth := 0.0           # how thick the painted strip is, front to back (0: the usual for that kind of line)
 
 	static func from_info(info: Dictionary) -> Gate:
 		var g := Gate.new()
@@ -27,6 +28,7 @@ class Gate:
 		g.forward = Vector3(info.forward[0], 0.0, info.forward[2]).normalized()
 		g.half_width = float(info.half_width)
 		g.min_y = float(info.get("min_y", -1e9))
+		g.depth = float(info.get("depth", 0.0))
 		return g
 
 	func side() -> Vector3:
@@ -79,8 +81,8 @@ static func format_time(seconds: float) -> String:
 # The two gates as things you can see: a flat ribbon painted on the ground across the track, following the ground's shape.
 # Start: a thin green line. Finish: a chequered strip.
 func build_gates(parent: Node3D, world: SkateWorld) -> void:
-	_build_ribbon(parent, world, start, "Start", 0.4, Color("2fd37a"), false)
-	_build_ribbon(parent, world, finish, "Finish", 1.6, Color.WHITE, true)
+	_build_ribbon(parent, world, start, "Start", start.depth if start.depth > 0.0 else 0.4, Color("2fd37a"), false)
+	_build_ribbon(parent, world, finish, "Finish", finish.depth if finish.depth > 0.0 else 1.6, Color.WHITE, true)
 
 
 static func _build_ribbon(parent: Node3D, world: SkateWorld, g: Gate, label: String, depth: float, colour: Color, checkered: bool) -> void:
