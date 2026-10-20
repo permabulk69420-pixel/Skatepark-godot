@@ -90,7 +90,6 @@ class Tuning:
 	const wallLandFrom := 0.9  # surfaces steeper than this (normal y) are ridden when you land on them…
 	const wallLandSpan := 0.5  # …fully by this much steeper
 	const wallLandKeep := 0.75  # share of the speed that would have gone into the wall that carries on down it
-	const landBailImpact := 13.0  # m/s into the ground
 	const bounds := {"x": 54.6, "z": 46.3}
 	const killY := -12.0
 
