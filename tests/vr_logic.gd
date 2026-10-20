@@ -43,17 +43,23 @@ func run() -> void:
 
 
 func test_hand_balance() -> void:
-	print("hand balance vs the web build")
-	var fixture: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/hand_balance.json"))
+	print("hand balance")
 	var hb := HandBalance.new()
-	var worst := 0.0
-	for i in fixture.frames.size():
-		var f: Array = fixture.frames[i]
-		var left = null if f[0] == null else Vector3(f[0][0], f[0][1], f[0][2])
-		var right := Vector3(f[1][0], f[1][1], f[1][2])
-		var got := hb.update(fixture.dt, left, right, f[2], f[3])
-		worst = maxf(worst, absf(got - float(fixture.expected[i])))
-	check(worst < 1e-5, "all %d frames match (worst difference %s)" % [fixture.frames.size(), str(worst)])
+	var left := Vector3(-0.3, 1.0, 0.0)
+	var right := Vector3(0.3, 1.6, 0.0)   # the right hand way up when the grind starts
+	for i in 72:
+		hb.update(1.0 / 72.0, left, right, true)
+	check(absf(hb.lean) < 0.01, "hands wherever they are when a balance starts are the neutral: no push (%.3f)" % hb.lean)
+	right.y = 2.2
+	for i in 72:
+		hb.update(1.0 / 72.0, left, right, true)
+	check(hb.lean > 0.5, "raising the right hand from there pushes right (%.3f)" % hb.lean)
+	for i in 72:
+		hb.update(1.0 / 72.0, left, right, false)
+	right.y = 1.0
+	for i in 72:
+		hb.update(1.0 / 72.0, left, right, true)
+	check(absf(hb.lean) < 0.01, "and the next balance takes its own neutral (%.3f)" % hb.lean)
 
 
 func test_controller_mapping() -> void:
