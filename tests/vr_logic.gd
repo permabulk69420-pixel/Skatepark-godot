@@ -1,4 +1,4 @@
-# The headset layer, tested without a headset: hand balance against the web build, where the rig puts your head, the controller
+# The headset layer, tested without a headset: hand balance, where the rig puts your head, the controller
 # button mapping (with stand-in controllers) and the buzz routing.
 #   godot --headless --path . -s res://tests/vr_logic.gd
 extends SceneTree
