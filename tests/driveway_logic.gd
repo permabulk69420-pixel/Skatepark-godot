@@ -45,6 +45,12 @@ func run() -> void:
 	for x in [-17.0, -8.0]:
 		var query := PhysicsRayQueryParameters3D.create(Vector3(x, 0.8, 10), Vector3(x, 0.8, 14))
 		check(not space.intersect_ray(query).is_empty(), "Fence still blocks beside opening at x %.0f" % x)
+	for p in [Vector2(-16, -16), Vector2(-8, -16), Vector2(-12.5, -19),
+		Vector2(-21, 0), Vector2(21, 0), Vector2(0, 31)]:
+		var query := PhysicsRayQueryParameters3D.create(Vector3(p.x, 1, -p.y), Vector3(p.x, -1, -p.y))
+		var hit := space.intersect_ray(query)
+		check(not hit.is_empty() and absf(hit.position.y) < 0.002,
+			"Exterior dirt is solid at %s" % p)
 	for p in [Vector2(-12.5, -17.5), Vector2(-12.5, -12.0), Vector2(-12.5, 0.0),
 		Vector2(-12.5, 10.0), Vector2(-10, 13), Vector2(-5, 13), Vector2(1, 14.5), Vector2(-8, 18)]:
 		var query := PhysicsRayQueryParameters3D.create(Vector3(p.x, 2, -p.y), Vector3(p.x, -1, -p.y))
