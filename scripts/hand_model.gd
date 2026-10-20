@@ -5,8 +5,7 @@ class_name HandModel
 extends RefCounted
 
 const FINGERS := ["index", "middle", "ring", "pinky", "thumb"]
-const SKIN_COLOUR := "res://assets/hands/skin-colour.jpg"
-const SKIN_NORMAL := "res://assets/hands/skin-normal.jpg"
+const SKIN_DIRECTORY := "res://assets/hands/skin/"
 
 var handedness := "left"
 var side := "l"
@@ -65,22 +64,21 @@ static func create(p_handedness: String) -> HandModel:
 	return h
 
 
-# The skin detail the models lack (they are one flat colour): tiling pores and creases, a little blotchy redness.
+# Anatomical CC0 skin is baked separately to each hand's original UV atlas.
+# Colours already contain skin tone; fine normals stay subtle at headset distance.
 func _apply_skin() -> void:
-	var original := mesh.get_active_material(0) as BaseMaterial3D
 	var material := StandardMaterial3D.new()
-	material.roughness = 0.62
-	# the model's own skin tone (the detail texture is near-white and is multiplied onto it)
-	material.albedo_color = original.albedo_color if original != null else Color("d9a98a")
-	var colour := load(SKIN_COLOUR) as Texture2D
-	var normal := load(SKIN_NORMAL) as Texture2D
-	if colour != null:
-		material.albedo_texture = colour
-	if normal != null:
-		material.normal_enabled = true
-		material.normal_texture = normal
-		material.normal_scale = 0.7
-	material.uv1_scale = Vector3(3.0, 3.0, 1.0)
+	material.albedo_color = Color.WHITE
+	material.albedo_texture = load(SKIN_DIRECTORY + handedness + "_albedo.png")
+	material.roughness = 1.0
+	material.roughness_texture = load(SKIN_DIRECTORY + handedness + "_roughness.png")
+	material.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	material.metallic_specular = 0.35
+	material.normal_enabled = true
+	material.normal_texture = load(SKIN_DIRECTORY + handedness + "_normal.png")
+	material.normal_scale = 0.3
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	material.texture_repeat = false
 	mesh.material_override = material
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mesh.extra_cull_margin = 1.0   # skinned bounds do not follow the pose
