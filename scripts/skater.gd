@@ -216,6 +216,7 @@ var bail_board: BailBoard = null
 var safe := SpawnPoint.new()
 var spawn := SpawnPoint.new()
 var bail_to_spawn := false        # a bail puts you back at the start rather than where you were (a timed run)
+var bail_ground := PackedStringArray()   # parts of the level (by collision name) that bail you the moment you ride on them (Spillway's floor below the course)
 var wheels := Wheels.new()
 
 var _hit := SkateWorld.Hit.new()
@@ -440,6 +441,8 @@ func update(input: Command, dt: float) -> void:
 			i += 1
 		if pos.y < T.killY:
 			respawn(spawn)
+		if mode == Mode.GROUND and bail_ground.size() > 0 and on_bail_ground():
+			bail("ground")
 		# Safety net: airborne with a real velocity but not moving at all means the board is wedged in the level geometry. Bail out of it
 		# rather than hang there (and fall through it, in the end).
 		if mode == Mode.AIR and pos.distance_squared_to(freeze_pos) < 1e-6 and vel.length_squared() > 0.25:
@@ -451,6 +454,18 @@ func update(input: Command, dt: float) -> void:
 			freeze_t = 0.0
 			bail("stuck")
 	update_visuals(dt)
+
+
+# Is the surface under the board one of the level's bail grounds?
+func on_bail_ground() -> bool:
+	var g := world.ground(pos.x, pos.z, pos.y + 0.3, _hit, 0.8)
+	if g == null or g.collider == null:
+		return false
+	var name := String(g.collider.name)
+	for part in bail_ground:
+		if name.contains(part):
+			return true
+	return false
 
 
 # Forward then back (or back then forward) on the stick, quickly, starts a manual.

@@ -127,6 +127,7 @@ const LEVELS := {
 		"bounds": {"x": 110.0, "z": 640.0, "cx": 0.0, "cz": -593.0},
 		"camera_far": 1500.0,
 		"decals": "Paint",
+		"bail_ground": ["LowCatchFloor"],   # the floor under the course: landing on it is a bail (so a missed gap cannot be ridden round)
 		# (The same kind of run as Flightline's: the start line at the lip of the roll-in, the finish on the flat before the vert.)
 		"run": {
 			"start": {"pos": [0.05, 224.0, -1.0], "forward": [0.0, 0.0, -1.0], "half_width": 6.8, "min_y": 190.0, "depth": 1.2},
