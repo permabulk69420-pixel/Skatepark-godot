@@ -1260,9 +1260,6 @@ func land(has_normal: bool, normal: Vector3) -> void:
 		if align > T.landMaxAngle:
 			bail("landing")
 			return
-	if impact > T.landBailImpact:
-		bail("impact")
-		return
 	vel = tmp
 	# Coming back down onto a steep wall you are riding it, not slamming into it: most of the fall carries on down the face.
 	var wallness := clampf((T.wallLandFrom - n.y) / T.wallLandSpan, 0.0, 1.0)
