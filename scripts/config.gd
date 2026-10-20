@@ -12,6 +12,18 @@ class Board:
 	const wheelHalfBase := 0.239
 	const length := 0.81
 
+# Extra forgiveness for catching and staying on rails and copings, added to the web build's numbers (below) while `Skater.generous` is set.
+# The game sets it; the web-parity replay (tests/sim_replay.gd) does not, so it still checks the sim against the web build exactly.
+class Generous:
+	const grindAlign := 0.18       # rad: 50-50 within 30° + 10° of parallel
+	const slideAlign := 0.18       # rad: boardslide within 30° + 10° of perpendicular
+	const truckLateral := 0.04     # metres: the rail may be this much further from the board's centreline
+	const slideLateral := 0.05     # metres: and from the middle of the deck for a boardslide
+	const catchBelow := 0.05       # metres: the board may be this much lower than the rail and still catch it
+	const catchAbove := 0.04       # metres: or higher
+	const catchMaxRise := 0.6      # m/s: still rising this much faster and it can still catch
+	const grindArmWindow := 0.15   # seconds longer that one press of the grind button stays live
+
 class Tuning:
 	const gravity := 9.81
 	const maxSubstep := 1.0 / 120.0
