@@ -329,12 +329,34 @@ func hold_board(sim: Skater, dt: float) -> void:
 			if dt > 0.0:
 				hand_vel = (p - prev) / dt
 			prev = p
-	# How far you have held it from your feet decides the name; the sim keeps the pose in case you bail with it in your hand.
+	# How you hold it decides the name: arms out in a T for a moment while it is in your hand is a Christ Air (on a flat screen, with no
+	# arms to see, holding it far from your feet is). The sim keeps the pose in case you bail with it in your hand.
 	if sim.off_trick != null:
 		sim.off_trick.far = maxf(sim.off_trick.far, board.global_position.distance_to(sim.pos))
-		if sim.off_trick.far >= BoardOff.CHRIST:
+		var christ := false
+		if hands.states.size() == 2:
+			if off.hand != null and not off.dropped and _in_tpose():
+				sim.off_trick.tpose += dt
+			christ = sim.off_trick.tpose >= BoardOff.CHRIST_HOLD
+		else:
+			christ = sim.off_trick.far >= BoardOff.CHRIST
+		if christ:
 			sim.off_trick.name = BoardOff.NAME_FAR
 	sim.board_off_pose = {"pos": board.global_position, "quat": board.global_transform.basis.orthonormalized().get_rotation_quaternion()}
+
+
+# Are both hands out in a T about the head right now?
+func _in_tpose() -> bool:
+	var left = null
+	var right = null
+	for h in hands.states:
+		if not h.tracked():
+			return false
+		if h.handedness == "left":
+			left = h.controller.global_position
+		else:
+			right = h.controller.global_position
+	return left != null and right != null and BoardOff.is_tpose(desk.global_position, left, right)
 
 
 func off_state() -> Dictionary:

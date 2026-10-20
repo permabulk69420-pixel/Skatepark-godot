@@ -2,7 +2,7 @@
 # While you hold the board in a grab, squeeze the detach button (left trigger; C on a flat screen): the board leaves your feet and
 # stays in your hand exactly where it was. Let go of the button to catch: the board snaps back under your feet if it is close enough
 # and lined up well enough at that moment (if not, it stays in your hand: squeeze and let go again). Land without it and you bail.
-# Held well away from you it is a Christ Air.
+# Held out to the side with your other arm out the other way (a T, like a cross) it is a Christ Air.
 class_name BoardOff
 extends RefCounted
 
@@ -11,10 +11,31 @@ const CLEAN_DISTANCE := 0.3
 const SKETCHY_ANGLE := 1.0471975511965976  # 60°: within both of these, caught, but you land sketchy
 const SKETCHY_DISTANCE := 0.5
 const MISS_BAILS := false                   # a catch pressed with the board way off: false = nothing happens (try again), true = you bail
-const CHRIST := 0.5                         # metres: held at least this far from your feet at some point, the trick is a Christ Air
+const CHRIST := 0.5                         # flat screen (no hands to see): the board held at least this far from your feet is a Christ Air
+const TPOSE_SPAN := 1.0                     # metres between the two hands (across, from above)
+const TPOSE_BODY := 0.35                    # metres: your head is this near the line between the hands (arms out either side, not both in front)
+const TPOSE_BELOW := 0.65                   # metres: the hands are no lower than this under your head...
+const TPOSE_ABOVE := 0.15                   # ...and no higher than this over it
+const TPOSE_LEVEL := 0.35                   # metres: and within this of each other in height
+const CHRIST_HOLD := 0.25                   # seconds in that pose, at some point while the board is in your hand, for it to be a Christ Air
 const SETTLE := 0.12                        # seconds the board takes to swing the last few degrees into line after a catch
 const NAME_NEAR := "Board Off"
 const NAME_FAR := "Christ Air"
+
+
+# Are the two hands held out in a T (head between them, arms out to either side, roughly level and about shoulder height)?
+static func is_tpose(head: Vector3, left: Vector3, right: Vector3) -> bool:
+	var a := Vector2(left.x, left.z)
+	var b := Vector2(right.x, right.z)
+	if a.distance_to(b) < TPOSE_SPAN:
+		return false
+	var closest := Geometry2D.get_closest_point_to_segment(Vector2(head.x, head.z), a, b)
+	if closest.distance_to(Vector2(head.x, head.z)) > TPOSE_BODY:
+		return false
+	for y in [left.y, right.y]:
+		if y < head.y - TPOSE_BELOW or y > head.y + TPOSE_ABOVE:
+			return false
+	return absf(left.y - right.y) <= TPOSE_LEVEL
 
 
 # How a catch pressed now would go. The board and the feet are each a position and an orientation in the world, where the feet are the
