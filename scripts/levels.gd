@@ -133,7 +133,7 @@ const LEVELS := {
 		"run": {
 			"start": {"pos": [0.05, 224.0, -1.0], "forward": [0.0, 0.0, -1.0], "half_width": 6.8, "min_y": 190.0, "depth": 1.2},
 			"finish": {"pos": [-10.75, 23.7, -1176.0], "forward": [0.0, 0.0, -1.0], "half_width": 11.6},
-			"pass": {"time": 80.0, "score": 12000},
+			"pass": {"time": 80.0, "score": 8000},
 		},
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
