@@ -74,6 +74,7 @@ jobs:
           godot --headless -s res://tests/score_logic.gd
           godot --headless -s res://tests/watch_logic.gd
           godot --headless -s res://tests/run_logic.gd
+          godot --headless -s res://tests/grind_logic.gd
 
       - name: OpenXR Vendors plugin (the Meta Quest loader)
         run: |
