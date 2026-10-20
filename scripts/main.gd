@@ -109,7 +109,6 @@ func _ready() -> void:
 	var paths := GrindPath.parse(level.grind_nodes)
 	var loops := LoopPath.parse(level.loop_nodes)
 	sim = Skater.new(world, paths, loops, info.bounds, true)
-	sim.generous = true
 	sim.set_spawn(level.spawn_pos, level.spawn_heading)
 	sim.event.connect(_on_sim_event)
 

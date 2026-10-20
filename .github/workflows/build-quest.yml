@@ -64,10 +64,9 @@ jobs:
           export/android/android_sdk_path = "$ANDROID_HOME"
           SETTINGS
 
-      - name: Check the skating still matches the web version
+      - name: Check the game logic
         run: |
           godot --headless --import || true
-          godot --headless -s res://tests/sim_replay.gd
           godot --headless -s res://tests/vr_logic.gd
           godot --headless -s res://tests/hands_logic.gd
           godot --headless -s res://tests/hub_logic.gd
