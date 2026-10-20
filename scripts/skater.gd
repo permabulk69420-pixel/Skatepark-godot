@@ -1464,8 +1464,6 @@ func fit_plane(w: Wheels) -> void:
 func try_grind(np: Vector3, h: float) -> bool:
 	if require_grind and grind_arm <= 0.0:
 		return false
-	if vel.y > T.catchMaxRise:
-		return false
 	var hv := heading_vec(heading)
 	var best = null
 	var best_score := INF
