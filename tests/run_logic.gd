@@ -50,6 +50,16 @@ func run() -> void:
 	check(r.state == Run.State.WAITING and r.time == 0.0, "reset puts it back at the start")
 	check(r.update(0.1, Vector3(0, 186, 80), Vector3(0, 186, -80)) == "" and r.state == Run.State.WAITING, "a respawn (a jump across the line) is not riding over it")
 	check(Run.format_time(0.0) == "0:00.0" and Run.format_time(72.46) == "1:12.4" and Run.format_time(605.0) == "10:05.0", "times read m:ss.t")
+	r.pass_time = 70.0
+	r.pass_score = 10000
+	r.time = 65.0
+	r.final_score = 10500
+	var both := r.passed()
+	r.time = 71.0
+	var slow := r.passed()
+	r.time = 65.0
+	r.final_score = 9000
+	check(both and not slow and not r.passed(), "a run passes only when it is quick enough and scores enough")
 
 	# In the game
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()

@@ -298,7 +298,11 @@ func _update_run(dt: float, before: Vector3) -> void:
 			haptics.pulse(0.6, 80)
 	elif happened == "finish":
 		run.final_score = score.total + score.chain_points()   # (a trick still in the air as you go over counts)
-		face_card.show_card("FINISH", ["TIME  " + Run.format_time(run.time), "SCORE  " + Score.format(run.final_score)], 12.0)
+		var lines := ["TIME  " + Run.format_time(run.time), "SCORE  " + Score.format(run.final_score)]
+		if run.has_marks():   # (with pass marks, each line shows what you did / what was needed)
+			lines = ["TIME  %s / %s" % [Run.format_time(run.time), Run.format_time(run.pass_time)],
+				"SCORE  %s / %s" % [Score.format(run.final_score), Score.format(run.pass_score)]]
+		face_card.show_card("PASSED" if run.passed() else "FINISH", lines, 12.0)
 		_show_score(run.final_score)
 		if haptics:
 			haptics.pulse(0.8, 150)

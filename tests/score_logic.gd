@@ -151,6 +151,15 @@ func _init() -> void:
 	s = fresh()
 	s.event("flip", {"name": "Fakie Kickflip"})
 	check(s.chain_points() > plain, "a fakie trick is worth more")
+	s = fresh()
+	s.event("flip", {"name": "Double Kickflip"})
+	var double := s.chain_points()
+	s = fresh()
+	s.event("flip", {"name": "Triple Kickflip"})
+	var triple := s.chain_points()
+	s = fresh()
+	s.event("flip", {"name": "Backflip"})
+	check(plain < double and double < triple and s.chain_points() > plain, "doubles and triples are worth more than singles, and a backflip more than a kickflip")
 
 	# a loop, a board-off trick
 	s = fresh()

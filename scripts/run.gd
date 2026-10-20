@@ -12,6 +12,8 @@ var time := 0.0            # seconds since the start gate (frozen once the run i
 var final_score := 0       # what the run was worth, set by whoever hears "finish"
 var start: Gate
 var finish: Gate
+var pass_time := 0.0       # to pass: finish in at most this many seconds…
+var pass_score := 0        # …with at least this many points (a pass_time of 0: the level has no pass marks)
 
 
 # A line across the way: crossed once, in the direction of `forward`, inside its width and at least `min_y` high.
@@ -47,6 +49,18 @@ class Gate:
 func _init(info: Dictionary) -> void:
 	start = Gate.from_info(info.start)
 	finish = Gate.from_info(info.finish)
+	var marks: Dictionary = info.get("pass", {})
+	pass_time = float(marks.get("time", 0.0))
+	pass_score = int(marks.get("score", 0))
+
+
+func has_marks() -> bool:
+	return pass_time > 0.0
+
+
+# A finished run passes when it was quick enough and scored enough.
+func passed() -> bool:
+	return has_marks() and time <= pass_time and final_score >= pass_score
 
 
 # Back to the start line, the clock at nothing.
