@@ -240,7 +240,6 @@ class Rider:
 class Hands:
 	const range := 0.38  # radians (~22°) of hand-line tilt from neutral that is a full push on the meter
 	const deadzone := 0.05  # radians (~3°) of tilt that is ignored
-	const restTime := 1.0  # seconds the neutral takes to follow your hands while you are rolling relaxed on the ground
 	const minSpread := 0.25  # metres: hands closer than this count as this far apart, so a tiny wobble is not a big angle
 	const ease := 0.25  # seconds the push takes to come in when a grind or manual starts
 	const response := 25.0  # 1/s smoothing of the push

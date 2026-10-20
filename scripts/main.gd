@@ -230,12 +230,10 @@ func _process(delta: float) -> void:
 	if vr:
 		command.body_y = camera.position.y if rig_control.calibrated else NAN
 		# In the headset the hands balance grinds and manuals: the hand chosen in the menu (for each) pushes the meter right when it
-		# is raised, the other pushes it left. The neutral hand position is only learned while rolling relaxed on the ground, not
-		# through a crouch, pop or flight.
-		var relaxed := sim.mode == Skater.Mode.GROUND and sim.manual == null and sim.grounded_time > 0.4 and absf(sim.crouch) < 0.06 and not command.jump
+		# is raised, the other pushes it left. The neutral is wherever the hands are when the grind or manual starts.
 		var grips := hands.grip_positions()
 		var hand: String = grind_hand if sim.mode == Skater.Mode.GRIND else manual_hand
-		command.lean = hand_balance.update(dt, grips.left, grips.right, sim.balance != null, relaxed) * HandBalance.sign_for(hand)
+		command.lean = hand_balance.update(dt, grips.left, grips.right, sim.balance != null) * HandBalance.sign_for(hand)
 	if command.toggle_stance and sim.mode == Skater.Mode.GROUND and sim.speed < 2.0:
 		sim.face_offset = -sim.face_offset
 		hud.say("Goofy" if sim.goofy else "Regular", 1.0)
