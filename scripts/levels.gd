@@ -75,6 +75,7 @@ const LEVELS := {
 		"camera_far": 280.0,
 		"decals": "Construction|Paint",
 		# Goals: reach these scores in one visit (your banked total). More kinds of goal come later.
+		"timer": 120.0,   # a round is two minutes, starting when you first roll off
 		"goals": [{"id": "score_5000", "score": 5000}, {"id": "score_15000", "score": 15000}, {"id": "score_20000", "score": 20000}],
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
