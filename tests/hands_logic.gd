@@ -33,6 +33,7 @@ func _init() -> void:
 
 func run() -> void:
 	await process_frame
+	test_skin_materials()
 	test_skinning()
 	await test_grab_and_place()
 	await test_board_off()
@@ -40,6 +41,27 @@ func run() -> void:
 	test_judge_catch()
 	print("\n%s" % ("all hand checks pass" if failures == 0 else "%d checks FAILED" % failures))
 	quit(0 if failures == 0 else 1)
+
+
+# Missing/wrong-side maps or a return to tiling should fail before a headset build.
+func test_skin_materials() -> void:
+	print("fitted hand skin materials")
+	var albedos: Array[Texture2D] = []
+	for side in ["left", "right"]:
+		var hand := HandModel.create(side)
+		var material := hand.mesh.material_override as StandardMaterial3D
+		check(material != null, "%s hand has its skin material" % side)
+		if material != null:
+			var colour := material.albedo_texture
+			var normal := material.normal_texture
+			var roughness := material.roughness_texture
+			check(colour != null and colour.get_size() == Vector2(1024, 1024), "%s anatomical colour atlas is present" % side)
+			check(normal != null and normal.get_size() == Vector2(512, 512), "%s fine normal map is present" % side)
+			check(roughness != null and roughness.get_size() == Vector2(512, 512), "%s roughness atlas is present" % side)
+			check(material.uv1_scale.is_equal_approx(Vector3.ONE), "%s skin uses the authored hand UVs without repeating" % side)
+			if colour != null: albedos.append(colour)
+		hand.root.free()
+	check(albedos.size() == 2 and albedos[0] != albedos[1], "left and right hands use their own fitted colour atlases")
 
 
 # The CPU skinning the grip solver relies on: at the rest pose every skinned vertex is where the mesh says it is.
