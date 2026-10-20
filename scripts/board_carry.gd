@@ -2,10 +2,8 @@
 # follows that hand exactly (turn your wrist and it turns with it) until you let go, and what the hand was doing when you let go is what
 # it does next: let it drop and it falls, swing and let go and it is thrown (board_prop.gd takes over from there).
 #
-# How it sits in the hand depends on what you took hold of. By the nose or the tail it hangs out of the bottom of your fist, the way a
-# carried board does: the tip in your fist, the rest running down along the handle with its top toward your leg. The hand stays exactly
-# on the controller. By a side it stays turned the way it was lying, with your hand fitted onto that edge (the same fit the grabs in
-# the air use).
+# It stays turned the way it was lying, with your hand fitted onto the edge you took hold of (the same fit the grabs in the air use), so
+# the nose, the tail and the sides all work the same way.
 class_name BoardCarry
 extends RefCounted
 
@@ -69,7 +67,7 @@ func update(dt: float, pose: Transform3D, allow: Callable) -> Transform3D:
 
 # After the board has been moved to that pose and the hands have posed: fit the hand onto what it is holding.
 func place() -> void:
-	if held != null and not held.hanging:
+	if held != null:
 		hold.place(held.state)
 
 
@@ -77,7 +75,7 @@ func place() -> void:
 func drop_quietly() -> void:
 	if held == null:
 		return
-	_release_hand(held)
+	hold.release(held.state)
 	_free_marker(held.marker)
 	held = null
 
@@ -98,26 +96,16 @@ func _pick(state: VrHands.HandState, pose: Transform3D) -> void:
 	marker.name = "Carry %s" % pick.part
 	marker.position = pick.point
 	board.add_child(marker)
-	var hanging: bool = pick.part == "nose" or pick.part == "tail"
-	var in_socket: Transform3D
+	var handle := {"node": marker, "axis": pick.axis, "halfLength": 0.0, "inward": pick.inward, "wristSide": Vector3.UP}
+	if not hold.grab(state, handle):
+		_free_marker(marker)
+		return
 	var socket_world: Transform3D = state.model.socket_global()
-	if hanging:
-		# the hand stays on the controller: only the fist pose is set
-		state.held = true
-		state.held_pose = VrHands.GRIP_POSES["medium"]
-		state.path_elapsed = 0.0
-		in_socket = hanging_pose(state, pick)
-	else:
-		var handle := {"node": marker, "axis": pick.axis, "halfLength": 0.0, "inward": pick.inward, "wristSide": Vector3.UP}
-		if not hold.grab(state, handle):
-			_free_marker(marker)
-			return
-		socket_world = state.model.socket_global()
-		var turn := socket_world.basis.inverse() * pose.basis
-		in_socket = Transform3D(turn, state.bar_offset - turn * (pick.point as Vector3))
+	var turn := socket_world.basis.inverse() * pose.basis
+	var in_socket := Transform3D(turn, state.bar_offset - turn * (pick.point as Vector3))
 	var target := socket_world * in_socket
 	held = {
-		"state": state, "part": pick.part, "marker": marker, "hanging": hanging,
+		"state": state, "part": pick.part, "marker": marker,
 		"rel": state.controller.global_transform.affine_inverse() * target,
 		"from": pose, "t": 0.0,
 	}
@@ -127,42 +115,15 @@ func _pick(state: VrHands.HandState, pose: Transform3D) -> void:
 	picked.emit(pick.part)
 
 
-# The board's pose in the hand's grip frame when it is held by its nose or tail: the tip in the fist (on the solved bar), the rest of the
-# board running out of the bottom of the fist along the handle (the bar's direction, whichever way points down when you hold the
-# controller upright), and the top of the board facing the way the palm faces (toward your leg).
-func hanging_pose(state: VrHands.HandState, pick: Dictionary) -> Transform3D:
-	var socket_world: Transform3D = state.model.socket_global()
-	var to_socket := socket_world.basis.inverse()
-	var down_in_socket: Vector3 = to_socket * (state.controller.global_transform.basis.orthonormalized() * Vector3.DOWN)
-	var bar := Vector3.UP
-	var dir := bar if down_in_socket.dot(bar) >= 0.0 else -bar
-	var top: Vector3 = state.plate_out - dir * state.plate_out.dot(dir)
-	top = top.normalized() if top.length() > 1e-4 else Vector3.RIGHT
-	var inward: Vector3 = pick.inward
-	var source := Basis(inward, Vector3.UP, inward.cross(Vector3.UP))
-	var target := Basis(dir, top, dir.cross(top))
-	var turn := target * source.inverse()
-	return Transform3D(turn, state.bar_offset - turn * (pick.point as Vector3))
-
-
 func _let_go() -> void:
 	var state: VrHands.HandState = held.state
 	var marker: Node3D = held.marker
 	var pose := board.global_transform
 	var v := hand_vel + hand_spin.cross(pose.origin - state.controller.global_position)
-	_release_hand(held)
+	hold.release(held.state)
 	_free_marker(marker)
 	held = null
 	released.emit(pose, v.limit_length(MAX_THROW), hand_spin.limit_length(MAX_SPIN))
-
-
-func _release_hand(h: Dictionary) -> void:
-	if h.hanging:
-		var state: VrHands.HandState = h.state
-		state.held = false
-		state.held_pose = null
-	else:
-		hold.release(h.state)
 
 
 func _track(controller: Node3D, dt: float) -> void:
