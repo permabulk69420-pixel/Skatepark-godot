@@ -58,6 +58,29 @@ static func _make_blob_shadow() -> MeshInstance3D:
 	return mesh
 
 
+# The board lying about or carried (not under the skater): at this pose, with its blob shadow under it.
+func show_at(world: SkateWorld, at: Transform3D) -> void:
+	root.global_transform = at
+	_place_shadow(world, at.origin, Skater.yaw_of(-at.basis.z.x, -at.basis.z.z) if absf(at.basis.z.y) < 0.99 else 0.0)
+
+
+func _place_shadow(world: SkateWorld, base: Vector3, heading: float) -> void:
+	var hit := world.ground(base.x, base.z, base.y + 0.6, _hit, 40.0)
+	if hit == null:
+		shadow.visible = false
+		return
+	var height := maxf(0.0, base.y - hit.y)
+	var fade := clampf(1.0 - height / 4.5, 0.0, 1.0)
+	shadow.visible = fade > 0.02
+	var material := shadow.material_override as StandardMaterial3D
+	material.albedo_color = Color(1, 1, 1, fade)
+	var tilt := Quaternion(Vector3.UP, hit.normal)
+	var turn := Quaternion(Vector3.UP, heading)
+	var size := 0.5 + height * 0.09
+	var basis := Basis(tilt * turn).scaled(Vector3(size * 0.75, 1.0, size * 1.55))
+	shadow.global_transform = Transform3D(basis, Vector3(base.x, hit.y + 0.012, base.z))
+
+
 func update(sim: Skater, dt: float) -> void:
 	var bailing := sim.mode == Skater.Mode.BAIL and sim.bail_board != null
 	if bailing:

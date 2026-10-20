@@ -852,6 +852,28 @@ func catch_board(quality: String, reversed: bool = false) -> void:
 	event.emit("catch", {"quality": quality, "reversed": reversed, "name": off_trick.name if off_trick != null else ""})
 
 
+# Onto the board in mid-air after walking or jumping off something with it in your hand (main calls this when the catch is pressed on
+# foot). `feet`: where the feet are; `velocity`: how they were moving; `new_heading`: the way the board points. quality and reversed are as
+# for catch_board. The spot a bail would put you back at is left as it was.
+func start_from_foot(feet: Vector3, velocity: Vector3, new_heading: float, quality: String, reversed: bool = false) -> void:
+	var keep_pos := safe.pos
+	var keep_heading := safe.heading
+	var where := SpawnPoint.new()
+	where.pos = feet - Vector3(0.0, 0.04, 0.0)
+	where.heading = new_heading
+	respawn(where)
+	safe.pos = keep_pos
+	safe.heading = keep_heading
+	vel = velocity
+	leave_ground()
+	rolled_off = false
+	if reversed:
+		heading = wrap_angle(heading + PI)
+		face_offset = -face_offset
+		switched = not switched
+	catch_sketchy = quality == "sketchy"
+
+
 func pop(charge: float) -> void:
 	end_manual("pop")
 	var pop_speed := T.popMin + (T.popMax - T.popMin) * clampf(charge, 0.0, 1.0)

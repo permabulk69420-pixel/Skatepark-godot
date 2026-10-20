@@ -109,16 +109,54 @@ func run() -> void:
 	s = spot()
 	check(s.y < -8.0 and absf(s.z) < 0.05, "out the front door and down the steps (y %.1f, height %.2f)" % [s.y, s.z])
 
-	# the board: step on, it settles on the floor, step off again
+	# the board: step on, it settles on the floor, step off again and it stays where you left it
 	stand(0, -3.0, 0.30, 0.0)
+	main.prop.place(main.foot.body() + Vector3(0.0, 0.02, 0.0), Quaternion.IDENTITY)
 	main._step_on()
 	check(not main.on_foot, "stepping on puts you on the board")
 	var cmd := Skater.Command.new()
 	for i in 90:
 		main.sim.update(cmd, 1.0 / 72.0)
 	check(main.sim.mode == Skater.Mode.GROUND and absf(main.sim.pos.y - 0.30) < 0.05, "the board stands on the house floor")
+	var rested: Vector3 = main.sim.pos
+	main._stand_up(main.sim.pos, main.sim.heading, Transform3D(Basis(main.sim.board_quaternion(false)), main.sim.pos), main.sim.vel, true)
+	check(main.on_foot and main.prop.origin().distance_to(rested) < 0.05, "stepping off leaves the board where it was")
+
+	# walking over it steps you on, but only after you have been away from it
+	for i in 10:
+		main.prop.step(0.05)
+		main._walk_over_board(0.05)
+	check(main.on_foot, "standing where you stepped off does not step you straight back on")
+	var t := 0.0
+	while t < 1.2:
+		main.foot.update(0.05, Vector2(0, 1), 0.0)
+		main.prop.step(0.05)
+		main._walk_over_board(0.05)
+		t += 0.05
+	check(main.on_foot and main.foot.body().distance_to(rested) > 1.0, "walking away from it keeps you on foot")
+	t = 0.0
+	while t < 3.0 and main.on_foot:
+		var to: Vector3 = main.prop.origin() - main.foot.body()
+		main.foot.update(0.05, Vector2(0, 1), 0.0)
+		main.foot.look_yaw = atan2(-to.x, -to.z) if not main.vr else main.foot.look_yaw
+		main.prop.step(0.05)
+		main._walk_over_board(0.05)
+		t += 0.05
+	check(not main.on_foot, "walking back over the board steps you on it")
+
+	# jumping on foot
 	main._stand_up(main.sim.pos, main.sim.heading)
-	check(main.on_foot and not main.board_view.root.visible, "stepping off puts the board away")
+	main.foot.update(0.05, Vector2.ZERO, 0.0)
+	var y0: float = main.foot.body().y
+	main.foot.jump()
+	var peak := y0
+	for i in 20:
+		main.foot.update(0.05, Vector2.ZERO, 0.0)
+		peak = maxf(peak, main.foot.body().y)
+	check(peak - y0 > 0.3 and peak - y0 < 1.2, "a jump on foot lifts you about half a metre (%.2f)" % (peak - y0))
+	for i in 40:
+		main.foot.update(0.05, Vector2.ZERO, 0.0)
+	check(not main.foot.air and absf(main.foot.body().y - y0) < 0.05, "and you land back on the floor")
 
 	# the half pipe: roll along the slab into the east transition and up it
 	var where := Skater.SpawnPoint.new()

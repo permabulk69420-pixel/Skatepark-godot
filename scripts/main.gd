@@ -2,11 +2,11 @@
 # and the Quest controllers drive it; otherwise it plays on a flat screen with a keyboard or gamepad.
 extends Node3D
 
-const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · Z stance · hold L: back home\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance\nHeadset: hold the left menu button to go back home"
+const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space to crouch, release to ollie · G or Shift to grind · F in the air + A/D: kickflip / heelflip, S: shove-it, S+A / S+D: varial kickflip / heelflip · flick W-S for a manual · drag to look · Z stance · Q step off the board (walk over it to step back on; Space jumps) · hold L: back home\nGamepad: left stick, A ollie, B flip, right trigger grind, Y stance\nHeadset: hold the left menu button to go back home · hold the right stick down to step off the board"
 const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
 const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go home (or, at home, to the next level)
 const STEP_OFF_HOLD := 0.6       # seconds the right stick is held down (Q on a keyboard: a tap) to step off the board
-const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps on the board (and off it again) · hold L: next level\nHeadset: left stick walks, right stick turns smoothly, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A steps on the board · hold the right stick down to step off · hold the left menu button for the next level"
+const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps off the board (walk over it to step back on), Space jumps · hold L: next level\nHeadset: left stick walks, right stick turns smoothly, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A jumps · squeeze a grip next to the board to pick it up · hold the right stick down to step off the board, walk over it to step on · hold the left menu button for the next level"
 
 var level_id := ""               # a test can set it before the scene is added; `-- level=<id>` on the command line does too; empty: the house
 var info: Dictionary
@@ -52,6 +52,18 @@ var held_step_off := 0.0
 var step_key_was := false
 var remote_key_was := false
 var step_on_guard := false       # right A stepped you on: it must be let go before it can mean "jump"
+var prop: BoardProp              # the board when it is not under you: lying about, or in a hand
+var carry: BoardCarry
+var prop_armed := true           # walking over the board steps you on, but only once you have been off it since you got off
+var prop_apart := 0.0            # seconds you have been away from it
+var jump_was := false
+var detach_foot_was := false
+
+const STEP_ON_HALF_WIDTH := 0.13    # metres: the middle of your body has to be this close to the board's middle line...
+const STEP_ON_HALF_LENGTH := 0.42   # ...and this close to its middle,
+const STEP_ON_HEIGHT := 0.3         # at about the board's height,
+const STEP_ON_MAX_SPEED := 1.5      # with the board wheels down and not rolling away faster than this
+const STEP_ON_REARM := 0.25         # and you have to have been off it this long since you got off or put it down
 
 
 func _ready() -> void:
@@ -125,6 +137,10 @@ func _ready() -> void:
 	hands = VrHands.new({"left": left_controller, "right": right_controller} if vr else {})
 	grab = BoardGrab.new(hands, board_view.root, camera, haptics)
 	grab.event.connect(_on_sim_event)
+	foot = FootMode.new(rig, camera, world, vr)
+	prop = BoardProp.new(world)
+	carry = BoardCarry.new(hands, grab, board_view.root)
+	carry.released.connect(_on_board_released)
 	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name + _foveation_text())
 	grind_hand = HandBalance.pushing_hand("grind")
 	manual_hand = HandBalance.pushing_hand("manual")
@@ -161,7 +177,6 @@ func _ready() -> void:
 		hub = Hub.new(level, self, vr)
 		if hub.tv != null:
 			hub.tv.chosen.connect(_go_to)
-		foot = FootMode.new(rig, camera, world, vr)
 		_stand_up(level.spawn_pos, level.spawn_heading)
 
 	loading_layer.queue_free()
@@ -244,10 +259,9 @@ func _process(delta: float) -> void:
 		hud.say("Recentred", 1.0)
 		if haptics:
 			haptics.pulse(0.4, 40)
-	if hub != null:
-		_hub_step_off(dt, command)
-		if on_foot:
-			return
+	_step_off(dt)
+	if on_foot:
+		return
 	if step_on_guard:
 		if command.jump:
 			command.jump = false
@@ -402,45 +416,123 @@ func _go_to(id: String) -> void:
 	get_tree().reload_current_scene()
 
 
-# Stand up in the house at `pos` facing `yaw` (a sim heading), the board put away.
-func _stand_up(pos: Vector3, yaw: float) -> void:
+# Stand up at `pos` facing `yaw` (a sim heading). With `put_board` the board is left where it was (its pose and how fast it was moving);
+# without, it is put on the floor in front of you.
+func _stand_up(pos: Vector3, yaw: float, board := Transform3D.IDENTITY, board_vel := Vector3.ZERO, put_board := false) -> void:
 	on_foot = true
 	flat_remote_held = false
 	foot.place(pos, yaw)
-	board_view.root.visible = false
-	board_view.shadow.visible = false
 	grab.release_all()
 	hud.speed_label.visible = false
+	if vr_gauge:
+		vr_gauge.quad.visible = false
+	if put_board:
+		prop.place(board.origin, board.basis.orthonormalized().get_rotation_quaternion(), board_vel)
+	else:
+		_drop_board_in_front(pos, yaw)
+	prop_armed = false
+	prop_apart = 0.0
+	jump_was = true   # (a button still down from before is not a jump)
 
 
-# Drop the board in front of you and step on it.
+# The board on the floor ahead of you, pointing the way you face.
+func _drop_board_in_front(pos: Vector3, yaw: float) -> void:
+	var at := pos + Vector3(-sin(yaw), 0.0, -cos(yaw)) * 0.7
+	var hit := world.ground(at.x, at.z, pos.y + 0.4, SkateWorld.Hit.new(), 3.0)
+	at = pos if hit == null else Vector3(at.x, hit.y, at.z)
+	prop.place(at + Vector3(0.0, 0.02, 0.0), Quaternion(Vector3.UP, yaw))
+
+
+# Is the middle of your body over the board?
+func _board_underfoot() -> bool:
+	var body := foot.body()
+	var local := prop.transform().affine_inverse() * body
+	return absf(local.x) < STEP_ON_HALF_WIDTH and absf(local.z) < STEP_ON_HALF_LENGTH and absf(body.y - prop.origin().y) < STEP_ON_HEIGHT
+
+
+# Walking over the board steps you on.
+func _walk_over_board(dt: float) -> void:
+	if carry.holding() or foot.air or not foot.placed:
+		return
+	if not _board_underfoot():
+		prop_apart += dt
+		if prop_apart > STEP_ON_REARM:
+			prop_armed = true
+		return
+	prop_apart = 0.0
+	if prop_armed and prop.upright() and prop.speed() < STEP_ON_MAX_SPEED:
+		_step_on()
+
+
+# Stand on the board where it lies, pointing the way it points.
 func _step_on() -> void:
-	var yaw := foot.facing()
-	var at := foot.body() + Vector3(-sin(yaw), 0.0, -cos(yaw)) * 0.7
-	var hit := world.ground(at.x, at.z, foot.floor_y + 0.4, SkateWorld.Hit.new(), 3.0)
-	at = foot.body() if hit == null else Vector3(at.x, hit.y, at.z)
+	var forward := prop.quat * Vector3(0, 0, -1)
 	var where := Skater.SpawnPoint.new()
-	where.pos = at
-	where.heading = yaw
+	where.pos = prop.origin()
+	where.heading = Skater.yaw_of(forward.x, forward.z)
 	sim.respawn(where)
+	carry.drop_quietly()
 	on_foot = false
 	step_on_guard = true
-	board_view.root.visible = true
 	hud.speed_label.visible = true
 	rig_control.request_calibration()
 
 
-# While riding in the house: step off (a tap of Q, or the right stick held down) once you are rolling slowly on the ground.
-func _hub_step_off(dt: float, command: Skater.Command) -> void:
+# In the air on foot with the board in your hand, the left trigger puts it under your feet: skating again, in mid-air, going the way you
+# were. It has to be close enough to your feet and the right way up (the same test as catching a board you took off in the air).
+func _catch_from_foot(pose: Transform3D) -> void:
+	var feet := foot.body() - Vector3(0.0, Config.Board.deckTop, 0.0)
+	var heading := foot.facing() - sim.face_offset   # (you face along the stance: the heading is a quarter turn from your gaze)
+	var q := pose.basis.orthonormalized().get_rotation_quaternion()
+	var verdict := BoardOff.judge_catch(pose.origin, q, feet, Quaternion(Vector3.UP, heading))
+	if verdict.quality == "miss":
+		if haptics:
+			haptics.pulse(0.15, 20, carry.hand_name())
+		return
+	var velocity := foot.velocity()
+	for state in hands.states:
+		state.was_squeezed = state.squeeze() > 0.6   # (a grip still held is not a fresh grab)
+	carry.drop_quietly()
+	on_foot = false
+	hud.speed_label.visible = true
+	sim.start_from_foot(feet, velocity, heading, verdict.quality, verdict.reversed)
+	rig_control.up = Vector3.UP
+	rig_control.calibrate()
+	if haptics:
+		haptics.pulse(0.7, 60)
+
+
+# The hand that held the board let go: it carries on with the hand's speed and spin.
+func _on_board_released(pose: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	prop.place(pose.origin, pose.basis.orthonormalized().get_rotation_quaternion(), velocity, spin)
+	prop_armed = not _board_underfoot()
+	prop_apart = 0.0
+
+
+# May this hand pick up the board? Not if it is holding the remote, or is by the remote and about to.
+func _may_carry(state: VrHands.HandState) -> bool:
+	if hub != null and hub.tv != null:
+		if hub.tv.holder == state.handedness:
+			return false
+		if hub.tv.holder == "" and state.controller.global_position.distance_to(hub.tv.remote.global_position) < HubTv.PICK_DISTANCE:
+			return false
+	return true
+
+
+# While riding: step off (a tap of Q, or the right stick held down) once you are rolling slowly on the ground. The board stays where it
+# was, loose. Not in the middle of a timed run.
+func _step_off(dt: float) -> void:
 	var held := false
 	var tapped := Input.is_key_pressed(KEY_Q) and not step_key_was
 	step_key_was = Input.is_key_pressed(KEY_Q)
 	if vr:
 		held = right_controller.is_button_pressed("primary_click")
 	held_step_off = held_step_off + dt if held else 0.0
-	if (tapped or held_step_off > STEP_OFF_HOLD) and sim.mode == Skater.Mode.GROUND and sim.speed < 2.0:
+	if not (tapped or held_step_off > STEP_OFF_HOLD):
+		return
+	if sim.mode == Skater.Mode.GROUND and sim.speed < 2.0 and sim.balance == null and not (run != null and run.state == Run.State.RUNNING):
 		held_step_off = -1e9
-		_stand_up(sim.pos, sim.heading)
+		_stand_up(sim.pos, sim.heading, Transform3D(Basis(sim.board_quaternion(false)), sim.pos), sim.vel, true)
 
 
 func _hand_state(handedness: String) -> VrHands.HandState:
@@ -450,48 +542,72 @@ func _hand_state(handedness: String) -> VrHands.HandState:
 	return null
 
 
-# Walking about the house: the TV and its remote, and stepping onto the board.
+# Walking about on foot: the board, the TV and its remote (in the house), jumping, and the board in your hand.
 func _process_foot(dt: float) -> void:
 	var move := Vector2.ZERO
 	var turn := 0.0
 	var pointers: Array = []
-	var step_on := false
-	var q_pressed := Input.is_key_pressed(KEY_Q)
+	var jump := false
+	var catch_pressed := false
+	var holder: String = hub.tv.holder if hub != null and hub.tv != null else ""
 	if vr:
 		var left_stick := left_controller.get_vector2("primary")
 		var right_stick := right_controller.get_vector2("primary")
-		var holder: String = hub.tv.holder if hub.tv != null else ""
 		move = Vector2.ZERO if holder == "left" else left_stick
 		turn = 0.0 if holder == "right" else right_stick.x
 		for pair in [["left", left_controller], ["right", right_controller]]:
 			var c: XRController3D = pair[1]
 			pointers.append({"id": pair[0], "node": c, "state": _hand_state(pair[0]), "pos": c.global_position, "squeeze": c.is_button_pressed("grip_click"),
 				"stick_x": c.get_vector2("primary").x, "trigger": c.is_button_pressed("trigger_click")})
-		step_on = right_controller.is_button_pressed("ax_button") and holder != "right" and not step_on_guard
-		if not right_controller.is_button_pressed("ax_button"):
+		var a_pressed := right_controller.is_button_pressed("ax_button")
+		jump = a_pressed and not step_on_guard
+		if not a_pressed:
 			step_on_guard = false
+		catch_pressed = left_controller.is_button_pressed("trigger_click")
 	else:
 		move = Vector2(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
 		var e_pressed := Input.is_key_pressed(KEY_E)
 		if e_pressed and not remote_key_was:
 			flat_remote_held = not flat_remote_held
 		remote_key_was = e_pressed
-		step_on = q_pressed and not step_key_was
-		step_key_was = q_pressed
+		jump = Input.is_key_pressed(KEY_SPACE)
 		pointers.append({"id": "key", "node": camera, "pos": camera.global_position, "squeeze": flat_remote_held,
 			"stick_x": float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
 			"trigger": Input.is_key_pressed(KEY_ENTER) or Input.is_key_pressed(KEY_KP_ENTER)})
 	foot.update(dt, move, turn)
+	if jump and not jump_was:
+		foot.jump()
+	jump_was = jump
 	hands.update(dt)               # (the hands first: the remote follows the one that holds it)
-	if hub.tv != null:
+	if hub != null and hub.tv != null:
 		hub.tv.update(pointers)
 		if hub.tv.holder == "":
 			flat_remote_held = false
 		elif not vr:
 			hud.say("Remote: left / right change the level · Enter plays · E puts it down", 0.3)
+	_board_on_foot(dt, catch_pressed)
+	level.lods.update(camera.global_position)
+	sfx.hush(dt)
 	hud.update(dt)
-	if step_on and foot.placed:
-		_step_on()
+	if on_foot:
+		_walk_over_board(dt)
+
+
+# The board while you are on foot: lying about (its physics), or in your hand (it follows the hand).
+func _board_on_foot(dt: float, catch_pressed: bool) -> void:
+	var pose := carry.update(dt, prop.transform(), _may_carry)
+	if carry.holding():
+		prop.place(pose.origin, pose.basis.orthonormalized().get_rotation_quaternion())
+	else:
+		prop.step(dt)
+		if prop.lost():
+			_drop_board_in_front(foot.body(), foot.facing())
+		pose = prop.transform()
+	board_view.show_at(world, pose)
+	carry.place()                  # (the holding hand is fitted onto the board after the hands have posed)
+	if catch_pressed and not detach_foot_was and carry.holding() and foot.air:
+		_catch_from_foot(pose)
+	detach_foot_was = catch_pressed
 
 
 func _unhandled_input(event: InputEvent) -> void:
