@@ -117,7 +117,7 @@ func _ready() -> void:
 	score.banked.connect(_on_banked)
 	rig_control = PlayerRig.new(rig, camera, sim, hud.fade_rect, vr)
 	if vr:
-		vr_gauge = VrGauge.new(rig)
+		vr_gauge = VrGauge.new(camera)
 	var model := (load("res://assets/board/skateboard.glb") as PackedScene).instantiate() as Node3D
 	board_view = BoardView.new(self, model)
 	hands = VrHands.new({"left": left_controller, "right": right_controller} if vr else {})
@@ -266,7 +266,7 @@ func _process(delta: float) -> void:
 		face_card.update(dt)
 	score.update(dt, sim.mode == Skater.Mode.GROUND and sim.balance == null, sim.mode == Skater.Mode.BAIL)
 	if vr_gauge:
-		vr_gauge.update(sim, hud.message, hud.message_time, rig_control.anchor, rig_control.yaw_cal)
+		vr_gauge.update(sim, hud.message, hud.message_time)
 	sfx.update(sim, dt)
 	if haptics:
 		haptics.continuous(sim)

@@ -109,29 +109,44 @@ static func make_label(text: String, size: int) -> Label:
 	return label
 
 
-# The balance meter: a strip that goes red - amber - green - amber - red, with a white marker. Returns [bar, marker].
+# The balance meter: a dark rounded strip with a faint teal band in the middle (the steady zone) and a thin marker that is
+# off-white, turning soft orange once you are drifting towards a fall. Returns [bar, marker].
+const MARKER_OK := Color("f2eee2")
+const MARKER_WARN := Color("e8864f")
+const BAR_FILL := Color(0.05, 0.09, 0.11, 0.78)
+const BAR_EDGE := Color(0.18, 0.32, 0.35, 0.9)
+const BAR_ZONE := Color(0.37, 0.82, 0.75, 0.30)
+
+
+static func _pill(fill: Color, edge: Color, border: int, radius: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.border_color = edge
+	box.set_border_width_all(border)
+	box.set_corner_radius_all(radius)
+	return box
+
+
 static func make_balance_bar(width: float, height: float) -> Array:
 	var bar := Control.new()
 	bar.custom_minimum_size = Vector2(width, height)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.visible = false
-	var gradient := Gradient.new()
-	gradient.offsets = PackedFloat32Array([0.0, 0.12, 0.30, 0.70, 0.88, 1.0])
-	gradient.colors = PackedColorArray([Color("b5412f"), Color("b08a2e"), Color("2f7d63"), Color("2f7d63"), Color("b08a2e"), Color("b5412f")])
-	var texture := GradientTexture1D.new()
-	texture.gradient = gradient
-	texture.width = int(width)
-	var strip := TextureRect.new()
-	strip.texture = texture
-	strip.stretch_mode = TextureRect.STRETCH_SCALE
-	strip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	strip.size = Vector2(width, height)
-	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(strip)
+	var track := Panel.new()
+	track.size = Vector2(width, height)
+	track.add_theme_stylebox_override("panel", _pill(BAR_FILL, BAR_EDGE, maxi(1, int(height / 10.0)), int(height / 2.0)))
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(track)
+	var zone := Panel.new()
+	zone.size = Vector2(width * 0.4, height * 0.5)
+	zone.position = Vector2(width * 0.3, height * 0.25)
+	zone.add_theme_stylebox_override("panel", _pill(BAR_ZONE, Color(0, 0, 0, 0), 0, int(height / 4.0)))
+	zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(zone)
 	var marker := ColorRect.new()
-	marker.color = Color.WHITE
-	marker.size = Vector2(maxf(4.0, height * 0.4), height * 2.0)
-	marker.position = Vector2(marker_x(width, 0.0) - marker.size.x / 2.0, -height * 0.5)
+	marker.color = MARKER_OK
+	marker.size = Vector2(maxf(4.0, height * 0.4), height * 1.5)
+	marker.position = Vector2(marker_x(width, 0.0) - marker.size.x / 2.0, -height * 0.25)
 	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(marker)
 	return [bar, marker]
