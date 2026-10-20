@@ -16,9 +16,10 @@ const REPEAT_KEEP := 0.5        # a trick that is already in the chain is worth 
 const SKETCHY_KEEP := 0.5       # a sketchy landing keeps this much of the chain
 
 # Flips and shove-its: the first keyword found in the trick's name sets its value. (A name can hold several: "Kickflip + Pop Shove-it".)
-const FLIPS := [["Varial", 450], ["Kickflip", 300], ["Heelflip", 300], ["Shove-it", 250]]
+const FLIPS := [["Varial", 450], ["Backflip", 700], ["Frontflip", 700], ["Kickflip", 300], ["Heelflip", 300], ["Shove-it", 250]]
 const FLIP_DEFAULT := 250
 const FAKIE_BONUS := 1.2        # "Fakie" tricks are worth this much more
+const TURNS := {"Double ": 2.0, "Triple ": 3.0}   # a double or triple is worth this many times the single
 
 # Grabs: a base value, plus a bit for every second you hold it (up to the cap). Under GRAB_MIN_HOLD is a touch, and scores nothing.
 const GRABS := {"Indy": 250, "Stalefish": 300, "Melon": 250, "Mute": 300, "Nose grab": 200, "Tail grab": 200}
@@ -42,6 +43,7 @@ const MANUAL_MAX_SECONDS := 10.0
 
 const LOOP := 1000              # a loop-the-loop ridden all the way round
 const CATCH := 600              # the board taken off your feet, a trick done, and caught (a sketchy catch is worth SKETCHY_KEEP of it)
+const CHRIST_AIR := 1200        # the same, when the trick was a Christ Air
 # -----------------------------------------------------------------------------------------------------------------------------------
 
 var total := 0                  # points banked so far
@@ -90,7 +92,8 @@ func event(type: String, data: Dictionary) -> void:
 		"catch":
 			var name := String(data.get("name", ""))
 			if name != "":
-				_add(name, CATCH * (SKETCHY_KEEP if data.get("quality", "") == "sketchy" else 1.0))
+				var worth := CHRIST_AIR if name.contains("Christ Air") else CATCH
+				_add(name, worth * (SKETCHY_KEEP if data.get("quality", "") == "sketchy" else 1.0))
 
 
 # Every frame. `rolling_plain`: on the ground, not in a manual or a grind. `in_bail`: the skater is bailing.
@@ -178,6 +181,9 @@ func _clear() -> void:
 
 func _flip_value(part: String) -> float:
 	var value := _keyword_value(FLIPS, part, FLIP_DEFAULT)
+	for word: String in TURNS:
+		if part.contains(word):
+			value *= float(TURNS[word])
 	return value * (FAKIE_BONUS if part.begins_with("Fakie ") else 1.0)
 
 

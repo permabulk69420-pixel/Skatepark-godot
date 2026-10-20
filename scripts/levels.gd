@@ -114,6 +114,7 @@ const LEVELS := {
 		"run": {
 			"start": {"pos": [6.125, 186.0, 29.5], "forward": [0.0, 0.0, -1.0], "half_width": 15.9, "min_y": 150.0},
 			"finish": {"pos": [6.125, 11.2, -929.0], "forward": [0.0, 0.0, -1.0], "half_width": 16.2},
+			"pass": {"time": 70.0, "score": 10000},   # to pass: no slower than 1:10 and at least this many points
 		},
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
@@ -132,6 +133,7 @@ const LEVELS := {
 		"run": {
 			"start": {"pos": [0.05, 224.0, -1.0], "forward": [0.0, 0.0, -1.0], "half_width": 6.8, "min_y": 190.0, "depth": 1.2},
 			"finish": {"pos": [-10.75, 23.7, -1176.0], "forward": [0.0, 0.0, -1.0], "half_width": 11.6},
+			"pass": {"time": 80.0, "score": 12000},
 		},
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],

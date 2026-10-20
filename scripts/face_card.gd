@@ -33,7 +33,7 @@ func _init(p_vr: bool, camera: Node3D, layer: CanvasLayer) -> void:
 	title = Hud.make_label("", 110)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-	lines = Hud.make_label("", 60)
+	lines = Hud.make_label("", 48)
 	lines.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(lines)
 	if vr:
