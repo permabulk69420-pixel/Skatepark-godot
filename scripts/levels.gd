@@ -109,11 +109,11 @@ const LEVELS := {
 		"bounds": {"x": 86.0, "z": 566.37, "cx": 4.0, "cz": -496.37},
 		"camera_far": 1500.0,
 		"decals": "Paint",
-		# A timed run: the clock starts as you ride off the top (the lip of the drop-in) and stops as you go over the coping of the vert.
-		# A gate is a line across the way down: pos (a point on it), forward (the way you cross it), half_width, and min_y (you must be this high).
+		# A timed run: the clock starts as you ride off the top (the lip of the drop-in) and stops as you cross the finish line, just before
+		# the vert. A gate is a line across the whole track: pos (its middle), forward (the way you cross it), half_width, and an optional min_y.
 		"run": {
-			"start": {"pos": [0.0, 186.0, 29.5], "forward": [0.0, 0.0, -1.0], "half_width": 8.0, "min_y": 150.0},
-			"finish": {"pos": [0.0, 21.5, -944.3], "forward": [0.0, 0.0, -1.0], "half_width": 10.6, "min_y": 19.0},
+			"start": {"pos": [6.125, 186.0, 29.5], "forward": [0.0, 0.0, -1.0], "half_width": 15.9, "min_y": 150.0},
+			"finish": {"pos": [6.125, 11.2, -929.0], "forward": [0.0, 0.0, -1.0], "half_width": 16.2},
 		},
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],

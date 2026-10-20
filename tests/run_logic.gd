@@ -39,13 +39,12 @@ func run() -> void:
 	r.update(0.5, Vector3(0, 100, 0), Vector3(0, 100, -1))
 	r.update(0.25, Vector3(0, 100, -1), Vector3(0, 100, -2))
 	check(absf(r.time - 0.75) < 1e-6, "the clock counts the frames since (%.2f)" % r.time)
-	check(r.update(0.1, Vector3(0, 21, -940), Vector3(0, 21, -943)) == "", "short of the finish line: nothing")
-	check(r.update(0.1, Vector3(20, 22, -943), Vector3(20, 22, -946)) == "", "going past the end of the line, beside it: nothing")
-	check(r.update(0.1, Vector3(0, 12, -943), Vector3(0, 12, -946)) == "", "going under it, too low: nothing")
-	check(r.update(0.1, Vector3(0, 22, -946), Vector3(0, 22, -943)) == "", "going back over it the wrong way: nothing")
-	check(r.update(0.1, Vector3(0, 22, -943), Vector3(0, 22, -946)) == "finish" and r.state == Run.State.DONE, "going over the vert's coping finishes the run")
+	check(r.update(0.1, Vector3(6, 11, -920), Vector3(6, 11, -925)) == "", "short of the finish line: nothing")
+	check(r.update(0.1, Vector3(40, 11, -927), Vector3(40, 11, -931)) == "", "going past the end of the line, beside it: nothing")
+	check(r.update(0.1, Vector3(6, 11, -931), Vector3(6, 11, -927)) == "", "going back over it the wrong way: nothing")
+	check(r.update(0.1, Vector3(6, 11, -927), Vector3(6, 11, -931)) == "finish" and r.state == Run.State.DONE, "crossing the finish line, just before the vert, finishes the run")
 	var frozen := r.time
-	r.update(1.0, Vector3(0, 22, -950), Vector3(0, 22, -951))
+	r.update(1.0, Vector3(6, 20, -950), Vector3(6, 20, -951))
 	check(r.time == frozen, "the clock stops")
 	r.reset()
 	check(r.state == Run.State.WAITING and r.time == 0.0, "reset puts it back at the start")
@@ -77,12 +76,12 @@ func run() -> void:
 		await process_frame
 		guard += 1
 	check(main.run.time >= 0.5, "the clock is running (%.1fs)" % main.run.time)
-	# the finish: put the skater over the coping
+	# the finish: put the skater over the line
 	main.score.total = 4200
-	var before: Vector3 = Vector3(0, 22, -943)
-	main.sim.pos = Vector3(0, 22, -946)
+	var before: Vector3 = Vector3(6, 11, -927)
+	main.sim.pos = Vector3(6, 11, -931)
 	main._update_run(0.0, before)
-	check(main.run.state == Run.State.DONE and main.run.final_score == 4200, "going over the coping finishes it, worth the score (%d)" % main.run.final_score)
+	check(main.run.state == Run.State.DONE and main.run.final_score == 4200, "crossing the finish line finishes it, worth the score (%d)" % main.run.final_score)
 	check(main.face_card.title.text == "FINISH" and main.face_card.lines.text.contains("4,200") and main.face_card.lines.text.contains(":"), "the card gives the time and the score (%s)" % main.face_card.lines.text.replace("\n", " / "))
 	check(main.hud.time_label.text.begins_with("TIME"), "the flat screen shows the time")
 	# riding back to the start spot begins again

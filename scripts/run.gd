@@ -76,23 +76,56 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d.%d" % [tenths / 600, (tenths / 10) % 60, tenths % 10]
 
 
-# The two gates as things you can see: just a bright line across the way.
-func build_gates(parent: Node3D) -> void:
-	_build_line(parent, start, "Start", Color("2fd37a"))
-	_build_line(parent, finish, "Finish", Color("f8f4e8"))
+# The two gates as things you can see: a flat ribbon painted on the ground across the track, following the ground's shape.
+# Start: a thin green line. Finish: a chequered strip.
+func build_gates(parent: Node3D, world: SkateWorld) -> void:
+	_build_ribbon(parent, world, start, "Start", 0.4, Color("2fd37a"), false)
+	_build_ribbon(parent, world, finish, "Finish", 1.6, Color.WHITE, true)
 
 
-static func _build_line(parent: Node3D, g: Gate, label: String, colour: Color) -> void:
+static func _build_ribbon(parent: Node3D, world: SkateWorld, g: Gate, label: String, depth: float, colour: Color, checkered: bool) -> void:
+	var side := g.side()
+	var hit := SkateWorld.Hit.new()
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var columns := maxi(2, int(ceil(g.half_width * 2.0)))   # a column a metre across, each dropped onto the ground under it
+	var square := 0.4
+	var points: Array = []
+	for i in columns + 1:
+		var u := -g.half_width + (g.half_width * 2.0) * float(i) / float(columns)
+		var edge := []
+		for along in [depth * 0.5, -depth * 0.5]:
+			var p: Vector3 = g.pos + side * u + g.forward * along
+			var found := world.ground(p.x, p.z, g.pos.y + 1.5, hit, 4.0)
+			edge.append(Vector3(p.x, (found.y if found != null else g.pos.y) + 0.04, p.z))
+		points.append([edge, (u + g.half_width) / square])
+	for i in columns:
+		var a: Array = points[i]
+		var b: Array = points[i + 1]
+		var quad := [[a[0][0], Vector2(a[1], 0.0)], [a[0][1], Vector2(a[1], depth / square)], [b[0][0], Vector2(b[1], 0.0)],
+			[b[0][0], Vector2(b[1], 0.0)], [a[0][1], Vector2(a[1], depth / square)], [b[0][1], Vector2(b[1], depth / square)]]
+		for v in quad:
+			tool.set_uv(v[1])
+			tool.add_vertex(v[0])
 	var paint := StandardMaterial3D.new()
 	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paint.cull_mode = BaseMaterial3D.CULL_DISABLED
 	paint.albedo_color = colour
+	if checkered:
+		paint.albedo_texture = _checker_texture()
+		paint.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	var strip := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(g.half_width * 2.0, 0.05, 0.4)
-	strip.mesh = box
+	strip.mesh = tool.commit()
 	strip.material_override = paint
 	strip.name = label + "Line"
 	strip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(strip)
-	strip.global_position = g.pos + Vector3(0.0, 0.05, 0.0)
-	strip.global_basis = Basis.looking_at(g.forward, Vector3.UP)
+
+
+# Black and white squares, made here (no image file).
+static func _checker_texture() -> Texture2D:
+	var image := Image.create(2, 2, false, Image.FORMAT_RGB8)
+	for x in 2:
+		for y in 2:
+			image.set_pixel(x, y, Color.WHITE if (x + y) % 2 == 0 else Color(0.04, 0.04, 0.04))
+	return ImageTexture.create_from_image(image)
