@@ -1,10 +1,10 @@
-# The menu: Resume, Retry, Return to house, Exit. In the headset it is the big frame from the watch (assets/hud/menu_frame.glb) hung
+# The menu: Resume, Retry, Return to house, the two balance-hand choices, Exit. In the headset it is the big frame from the watch (assets/hud/menu_frame.glb) hung
 # in front of you, with a laser from the right hand to point and the trigger to press. On a flat screen it is a plain overlay
 # (M opens it, the mouse or Up / Down / Enter choose).
 class_name WatchMenu
 extends RefCounted
 
-signal chosen(action: String)   # "resume", "retry", "home" or "exit"
+signal chosen(action: String)   # "resume", "retry", "home", "grind_hand", "manual_hand" or "exit"
 signal hovered                    # the pointer moved onto a different button
 
 const FRAME := "res://assets/hud/menu_frame.glb"
@@ -55,8 +55,8 @@ func _init(parent: Node, p_vr: bool, in_house: bool, title: String) -> void:
 # The buttons the menu has for this place (the house has nothing to retry and nowhere to go back to).
 static func actions_for(in_house: bool) -> Array:
 	if in_house:
-		return ["resume", "exit"]
-	return ["resume", "retry", "home", "exit"]
+		return ["resume", "grind_hand", "manual_hand", "exit"]
+	return ["resume", "retry", "home", "grind_hand", "manual_hand", "exit"]
 
 
 static func caption_for(action: String) -> String:
@@ -64,7 +64,15 @@ static func caption_for(action: String) -> String:
 		"resume": return "Resume"
 		"retry": return "Retry"
 		"home": return "Return to house"
+		"grind_hand": return "Grind balance"
+		"manual_hand": return "Manual balance"
 		_: return "Exit"
+
+
+# The two balance buttons say which hand, raised, moves the meter to the right (pressing one switches it).
+func set_hands(grind: String, manual: String) -> void:
+	(buttons["grind_hand"] as Button).text = "%s: %s hand up = right" % [caption_for("grind_hand"), grind]
+	(buttons["manual_hand"] as Button).text = "%s: %s hand up = right" % [caption_for("manual_hand"), manual]
 
 
 func _build(in_house: bool, title: String) -> Control:
@@ -78,7 +86,7 @@ func _build(in_house: bool, title: String) -> Control:
 		margin.add_theme_constant_override("margin_" + side, 36)
 	panel.add_child(margin)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 16)
+	column.add_theme_constant_override("separation", 10)
 	margin.add_child(column)
 	var heading := Label.new()
 	heading.text = title.to_upper()
@@ -89,10 +97,10 @@ func _build(in_house: bool, title: String) -> Control:
 	for action: String in actions_for(in_house):
 		var button := Button.new()
 		button.text = caption_for(action)
-		button.custom_minimum_size = Vector2(0, 100)
+		button.custom_minimum_size = Vector2(0, 64)
 		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_NONE if vr else Control.FOCUS_ALL
-		button.add_theme_font_size_override("font_size", 46)
+		button.add_theme_font_size_override("font_size", 38)
 		button.add_theme_color_override("font_color", Color("f8f4e8"))
 		button.add_theme_color_override("font_hover_color", Color.WHITE)
 		button.add_theme_color_override("font_pressed_color", Color.WHITE)

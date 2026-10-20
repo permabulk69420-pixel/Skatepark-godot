@@ -32,6 +32,8 @@ var run: Run                     # a timed run (null in a level without one)
 var face_card: FaceCard
 var watch: Watch                 # on the left wrist (headset only)
 var watch_menu: WatchMenu
+var grind_hand := "left"     # the hand that, raised, pushes the balance meter right (set in the menu)
+var manual_hand := "left"
 var aim_controller: XRController3D   # the right hand's pointing pose, for the menu's laser
 var menu_key_was := false
 var menu_escape_was := false
@@ -123,7 +125,10 @@ func _ready() -> void:
 	hands = VrHands.new({"left": left_controller, "right": right_controller} if vr else {})
 	grab = BoardGrab.new(hands, board_view.root, camera, haptics)
 	grab.event.connect(_on_sim_event)
-	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name)
+	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name + _foveation_text())
+	grind_hand = HandBalance.pushing_hand("grind")
+	manual_hand = HandBalance.pushing_hand("manual")
+	watch_menu.set_hands(grind_hand, manual_hand)
 	watch_menu.chosen.connect(_on_menu_chosen)
 	watch_menu.hovered.connect(func() -> void:
 		if haptics:
@@ -182,6 +187,17 @@ func _start_xr() -> bool:
 	return true
 
 
+# TEMPORARY, for checking foveation on the headset: the menu's title says what the headset reports ("Foveation 3" when it is
+# available and set to level 3, "no foveation" when the headset says it cannot do it). Nothing on a flat screen.
+func _foveation_text() -> String:
+	var xr := XRServer.find_interface("OpenXR")
+	if not vr or xr == null or not xr.has_method("is_foveation_supported"):
+		return ""
+	if not xr.call("is_foveation_supported"):
+		return "  ·  no foveation"
+	return "  ·  foveation %d%s" % [xr.call("get_foveation_level"), " dynamic" if xr.call("get_foveation_dynamic") else ""]
+
+
 static func _make_controller(tracker: StringName) -> XRController3D:
 	var controller := XRController3D.new()
 	controller.tracker = tracker
@@ -213,11 +229,13 @@ func _process(delta: float) -> void:
 	command.grabbing = grab.holding()   # grabbing lets the stick flip you over (backflip / frontflip)
 	if vr:
 		command.body_y = camera.position.y if rig_control.calibrated else NAN
-		# In the headset the hands balance grinds and manuals: right hand up pushes the meter right, left hand up pushes it left. The
-		# neutral hand position is only learned while rolling relaxed on the ground, not through a crouch, pop or flight.
+		# In the headset the hands balance grinds and manuals: the hand chosen in the menu (for each) pushes the meter right when it
+		# is raised, the other pushes it left. The neutral hand position is only learned while rolling relaxed on the ground, not
+		# through a crouch, pop or flight.
 		var relaxed := sim.mode == Skater.Mode.GROUND and sim.manual == null and sim.grounded_time > 0.4 and absf(sim.crouch) < 0.06 and not command.jump
 		var grips := hands.grip_positions()
-		command.lean = hand_balance.update(dt, grips.left, grips.right, sim.balance != null, relaxed)
+		var hand: String = grind_hand if sim.mode == Skater.Mode.GRIND else manual_hand
+		command.lean = hand_balance.update(dt, grips.left, grips.right, sim.balance != null, relaxed) * HandBalance.sign_for(hand)
 	if command.toggle_stance and sim.mode == Skater.Mode.GROUND and sim.speed < 2.0:
 		sim.face_offset = -sim.face_offset
 		hud.say("Goofy" if sim.goofy else "Regular", 1.0)
@@ -359,6 +377,14 @@ func _on_menu_chosen(action: String) -> void:
 			_go_to(level_id)
 		"home":
 			_go_to(Levels.HUB)
+		"grind_hand":
+			grind_hand = HandBalance.other_hand(grind_hand)
+			HandBalance.set_pushing_hand("grind", grind_hand)
+			watch_menu.set_hands(grind_hand, manual_hand)
+		"manual_hand":
+			manual_hand = HandBalance.other_hand(manual_hand)
+			HandBalance.set_pushing_hand("manual", manual_hand)
+			watch_menu.set_hands(grind_hand, manual_hand)
 		"exit":
 			get_tree().quit()
 

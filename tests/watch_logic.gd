@@ -57,8 +57,8 @@ func run() -> void:
 	check(WatchMenu.ray_to_pixel(turned, Vector3(0, 1.5, 0), Vector3(1, 0, 0)).distance_to(Vector2(WatchMenu.PIXELS) / 2.0) < 2.0, "a turned menu is hit from the side it faces")
 
 	# What each place offers
-	check(WatchMenu.actions_for(false) == ["resume", "retry", "home", "exit"], "a level: resume, retry, return to house, exit")
-	check(WatchMenu.actions_for(true) == ["resume", "exit"], "the house: only resume and exit")
+	check(WatchMenu.actions_for(false) == ["resume", "retry", "home", "grind_hand", "manual_hand", "exit"], "a level: resume, retry, return to house, the two balance hands, exit")
+	check(WatchMenu.actions_for(true) == ["resume", "grind_hand", "manual_hand", "exit"], "the house: no retry or return to house")
 
 	# On a flat screen: M opens it, the game stops, a button picks
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
