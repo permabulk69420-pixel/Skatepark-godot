@@ -94,11 +94,8 @@ class Tuning:
 	const killY := -12.0
 
 	# Grinding
-	const grindAlign := 0.52  # rad (30°) from parallel for a 50-50
-	const slideAlign := 0.52  # rad (30°) from perpendicular for a boardslide
-	const grindReach := 0.10  # a rail this far outside the board's edge still catches (both kinds)
-	const truckLateral := Config.Board.width / 2.0 + grindReach  # 50-50: the rail anywhere under the width of the board, plus the reach, each side
-	const slideLateral := Config.Board.length / 2.0 + grindReach  # boardslide: the rail anywhere along the length of the board, plus the reach, each end
+	const grindSplit := PI / 4.0  # rad (45°): the board closer to parallel with the rail than this is a 50-50, otherwise a boardslide (no gap between)
+	const grindReach := 0.10  # a rail this far outside the board's edge still catches
 	const catchBelow := 0.12
 	const catchAbove := 0.09
 	const grindMinSpeed := 0.9
@@ -119,12 +116,14 @@ class Tuning:
 	const exitAlignTime := 0.35
 	# Balance: bal'' = instab·bal + wobble + control·stick − damp·bal'
 	const balInstab0 := 2.0
-	const balInstabGrow := 0.35
-	const balInstabMax := 6.5
-	const balWobble := 1.25
+	const balInstabGrow := 0.30
+	const balInstabMax := 5.5
+	const balWobble := 1.0
 	const balControl := 7.5
 	const balDamp := 1.4
-	const balEntryScale := 0.8
+	const balEntryScale := 0.4  # how far off-centre a sloppy catch starts the meter (a perfect one starts it in the middle)
+	const balGrace := 0.7  # seconds at the start of a grind while the pull towards falling comes in from balGraceStart up to full…
+	const balGraceStart := 0.3  # …starting at this share of it: time to get your hands up
 	# Nosegrind / 5-0: in a 50-50, hold the stick up (front truck on the rail, tail up) or down (back truck, nose up).
 	const variantStick := 0.55  # stick deflection that picks a nose grind or a 5-0
 	const variantRelease := 0.35  # back inside this and it is a 50-50 again (in between it stays as it was)
