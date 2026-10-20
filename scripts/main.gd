@@ -218,9 +218,6 @@ func _process(delta: float) -> void:
 		var relaxed := sim.mode == Skater.Mode.GROUND and sim.manual == null and sim.grounded_time > 0.4 and absf(sim.crouch) < 0.06 and not command.jump
 		var grips := hands.grip_positions()
 		command.lean = hand_balance.update(dt, grips.left, grips.right, sim.balance != null, relaxed)
-		# On rails, reverse the hand tilt: raising the right hand corrects left, and vice versa.
-		if sim.mode == Skater.Mode.GRIND:
-			command.lean *= -1.0
 	if command.toggle_stance and sim.mode == Skater.Mode.GROUND and sim.speed < 2.0:
 		sim.face_offset = -sim.face_offset
 		hud.say("Goofy" if sim.goofy else "Regular", 1.0)
