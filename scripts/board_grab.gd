@@ -146,6 +146,11 @@ func _outline() -> Outline:
 	return out
 
 
+func ensure_shape() -> void:
+	if shape == null:
+		shape = _outline()
+
+
 # Which part of the board a hand at `local` (the hand's grip, in the board's own space) would take: whichever is closest of the nose
 # tip, the tail tip, and the side edges level with the hand (kept within `between` of the middle of the deck).
 func pick_grab(local: Vector3) -> Dictionary:

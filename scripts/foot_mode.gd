@@ -14,6 +14,10 @@ const EYE := 1.65                # flat screen
 const TURN_RATE := deg_to_rad(120.0)   # radians per second with the stick right over (a guess: change it to taste)
 const WALL_PROBES := [0.4, 1.0, 1.55]   # heights above the feet the walls are felt at (just above the biggest step)
 const SETTLE_FRAMES := 24
+const JUMP_SPEED := 3.4          # m/s straight up when you jump (about half a metre of air)
+const GRAVITY := 9.81
+const DROP_LEAVES := 0.3         # the floor under you falling away by more than this (a ledge, not a step) and you are in the air
+const AIR_CONTROL := 0.3         # in the air the stick only steers you this much; you carry on the way you were going
 const SLOPE_FOLLOW := 0.12       # headset, standing still: the floor under the head may differ this much from where the feet are and still be followed
 
 var rig: Node3D
@@ -24,6 +28,10 @@ var floor_y := 0.0
 var look_yaw := 0.0
 var look_pitch := 0.0
 var placed := false
+var air := false                 # off the ground (jumped, or walked off an edge)
+var vy := 0.0                    # up speed while in the air
+var air_move := Vector3.ZERO     # sideways speed while in the air (what you were walking at when you left the ground)
+var walk_velocity := Vector3.ZERO   # sideways speed on the ground, smoothed
 var _settle := 0
 var _want_pos := Vector3.ZERO
 var _want_yaw := 0.0
@@ -78,6 +86,23 @@ func facing() -> float:
 	return atan2(-f.x, -f.z)
 
 
+# Off the ground: up with a jump. False if you are already in the air.
+func jump() -> bool:
+	if air or not placed:
+		return false
+	air = true
+	vy = JUMP_SPEED
+	air_move = walk_velocity
+	return true
+
+
+# How the body is moving now (for taking the board with you into a trick): sideways from the walk or the air, up from the air.
+func velocity() -> Vector3:
+	if air:
+		return Vector3(air_move.x, vy, air_move.z)
+	return Vector3(walk_velocity.x, 0.0, walk_velocity.z)
+
+
 # Flat-screen mouse look.
 func turn_view(dx: float, dy: float) -> void:
 	look_yaw -= dx * 0.003
@@ -112,6 +137,10 @@ func update(dt: float, move: Vector2, turn: float) -> bool:
 		var right := Vector3(cos(yaw), 0.0, -sin(yaw))
 		var m := move.limit_length(1.0)
 		delta = (forward * m.y + right * m.x) * WALK_SPEED * dt
+	if dt > 0.0 and not air:
+		walk_velocity = walk_velocity.lerp(delta / dt, minf(1.0, 12.0 * dt))
+	if air:
+		return _air_update(start, delta, dt)
 	if vr and delta == Vector3.ZERO:
 		_follow_floor_standing(start, dt)
 		return true   # (leaning over a table or reaching about for real is never held back or lifted: only the stick walks into things)
@@ -127,14 +156,34 @@ func update(dt: float, move: Vector2, turn: float) -> bool:
 	if grounded:
 		if floor_under.y > floor_y:
 			floor_y = minf(floor_under.y, floor_y + RISE_RATE * dt)
+		elif floor_y - floor_under.y > DROP_LEAVES:
+			grounded = false   # a real drop: you are off the edge
 		else:
 			floor_y = maxf(floor_under.y, floor_y - FALL_RATE * dt)
-	else:
-		floor_y -= FALL_RATE * dt
+	if not grounded:
+		air = true
+		vy = 0.0
+		air_move = walk_velocity
 	var shift := Vector3(pushed.x - start.x, 0.0, pushed.z - start.z)
 	rig.global_position += shift
 	rig.global_position.y = floor_y
 	return grounded
+
+
+# One frame in the air: carry on the way you were going (a little steering), fall, and stand again when the ground comes up.
+func _air_update(start: Vector3, stick_delta: Vector3, dt: float) -> bool:
+	var moved := _resolve(start + air_move * dt + stick_delta * AIR_CONTROL)
+	vy -= GRAVITY * dt
+	floor_y += vy * dt
+	var under := _floor(moved)
+	if under != null and vy <= 0.0 and floor_y <= under.y:
+		floor_y = under.y
+		air = false
+		vy = 0.0
+		walk_velocity = Vector3(air_move.x, 0.0, air_move.z) * 0.5
+	rig.global_position += Vector3(moved.x - start.x, 0.0, moved.z - start.z)
+	rig.global_position.y = floor_y
+	return not air
 
 
 # Standing still in the headset: the feet only follow a small change in the floor (a ramp you are standing on), not whatever is under
