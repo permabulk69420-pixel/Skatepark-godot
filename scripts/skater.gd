@@ -215,6 +215,7 @@ var bail_time := 0.0
 var bail_board: BailBoard = null
 var safe := SpawnPoint.new()
 var spawn := SpawnPoint.new()
+var bail_to_spawn := false        # a bail puts you back at the start rather than where you were (a timed run)
 var wheels := Wheels.new()
 
 var _hit := SkateWorld.Hit.new()
@@ -2022,7 +2023,7 @@ func bail_step(dt: float) -> void:
 		var q := Quaternion.from_euler(Vector3(b.spin.x * dt, b.spin.y * dt, b.spin.z * dt))
 		b.quat = q * b.quat
 	if bail_time >= T.bailTime:
-		respawn(safe)
+		respawn(spawn if bail_to_spawn else safe)
 
 
 # ----- display ---------------------------------------------------------------------------------------------

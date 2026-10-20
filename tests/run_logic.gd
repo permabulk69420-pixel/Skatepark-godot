@@ -88,6 +88,19 @@ func run() -> void:
 	# riding back to the start spot begins again
 	main.sim.respawn(main.sim.spawn)
 	check(main.run.state == Run.State.WAITING and main.score.total == 0 and main.run.time == 0.0, "back on the start spot, the run and the score begin again")
+	# a bail in the middle of a run starts it all again from the top
+	main.run.state = Run.State.RUNNING
+	main.run.time = 33.0
+	main.score.total = 7000
+	main.sim.pos = Vector3(0, 100, -300)
+	main.sim.mode = Skater.Mode.GROUND
+	main.sim.bail("test")
+	guard = 0
+	while main.sim.mode == Skater.Mode.BAIL and guard < 3000:
+		await process_frame
+		guard += 1
+	check(main.sim.pos.distance_to(main.sim.spawn.pos) < 1.0, "a bail puts you back at the top (%s)" % main.sim.pos)
+	check(main.run.state == Run.State.WAITING and main.run.time == 0.0 and main.score.total == 0, "...with the clock and the score back at nothing")
 	main.queue_free()
 	await process_frame
 	print("%s" % ("all fine" if failures == 0 else "%d FAILED" % failures))
