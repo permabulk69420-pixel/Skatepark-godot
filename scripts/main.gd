@@ -136,6 +136,8 @@ func _ready() -> void:
 		aim_controller.pose = &"aim"
 		aim_controller.name = "right_aim"
 		rig.add_child(aim_controller)
+	if info.has("bail_ground"):
+		sim.bail_ground = PackedStringArray(info.bail_ground)
 	if info.has("run"):
 		run = Run.new(info.run)
 		run.build_gates(self, world)
