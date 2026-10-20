@@ -120,10 +120,27 @@ const LEVELS := {
 			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 320.0, "fogFar": 1300.0,
 		},
 	},
+	"spillway": {
+		"name": "Spillway",
+		"file": "res://assets/levels/spillway.glb",
+		"blurb": "1.2 km downhill Big Air circuit · Ten linked gaps from 14 to 32 m, a rail you have to carry across and a vert finish · RIFT board",
+		"bounds": {"x": 110.0, "z": 640.0, "cx": 0.0, "cz": -593.0},
+		"camera_far": 1500.0,
+		"decals": "Paint",
+		# (The same kind of run as Flightline's: the start line at the lip of the roll-in, the finish on the flat before the vert.)
+		"run": {
+			"start": {"pos": [-0.1, 224.0, -1.0], "forward": [0.0, 0.0, -1.0], "half_width": 7.3, "min_y": 190.0},
+			"finish": {"pos": [-10.75, 23.7, -1176.0], "forward": [0.0, 0.0, -1.0], "half_width": 11.6},
+		},
+		"look": {
+			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
+			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 320.0, "fogFar": 1300.0,
+		},
+	},
 }
 
 const HUB := "hub"
-const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "switchyard", "megaramp", "flightline"]   # the levels on the TV, in channel order
+const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "switchyard", "megaramp", "flightline", "spillway"]   # the levels on the TV, in channel order
 const SETTINGS := "user://settings.cfg"
 
 # The level the next scene should open on (set by go_to); empty means the house.
