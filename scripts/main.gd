@@ -138,7 +138,7 @@ func _ready() -> void:
 		rig.add_child(aim_controller)
 	if info.has("run"):
 		run = Run.new(info.run)
-		run.build_gates(self)
+		run.build_gates(self, world)
 		face_card = FaceCard.new(vr, camera, hud.layer)
 		sim.bail_to_spawn = true   # (a bail in a run starts it all again from the top: the clock, the score and you)
 		_show_time()
