@@ -16,7 +16,13 @@ const DROP := 0.1                       # and a little below it
 const FACE_Z := 0.004                   # the content sits this far (model metres) in front of the plate
 const REACH := 3.0                      # the laser's length when it points at nothing
 const ACCENT := Color("5fd0c0")
-const PANEL := Color(0.05, 0.09, 0.11, 1.0)
+const PANEL := Color(0.043, 0.063, 0.078, 1.0)
+const ROW := Color(0.075, 0.105, 0.127, 1.0)           # a button at rest
+const ROW_LIT := Color(0.1, 0.17, 0.2, 1.0)            # a button the pointer is on
+const TEXT := Color("e9eef0")
+const TEXT_DIM := Color("7f9298")
+const ROW_HEIGHT := 56
+const FONT := 32
 
 var is_open := false
 var root: Node3D
@@ -90,22 +96,32 @@ func set_goals(lines: Array) -> void:
 		child.queue_free()
 	var done := 0
 	for line: Dictionary in lines:
-		var row := HBoxContainer.new()
+		var row := PanelContainer.new()
+		row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
+		row.add_theme_stylebox_override("panel", _row_box(ROW, 0))
+		var inner := HBoxContainer.new()
+		inner.add_theme_constant_override("separation", 18)
+		row.add_child(inner)
+		var dot := Panel.new()
+		dot.custom_minimum_size = Vector2(22, 22)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var ring := StyleBoxFlat.new()
+		ring.bg_color = ACCENT if line.done else Color(0, 0, 0, 0)
+		ring.border_color = ACCENT if line.done else TEXT_DIM
+		ring.set_border_width_all(3)
+		ring.set_corner_radius_all(11)
+		dot.add_theme_stylebox_override("panel", ring)
+		inner.add_child(dot)
 		var text := Label.new()
 		text.text = line.text
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		text.add_theme_font_size_override("font_size", 38)
-		text.add_theme_color_override("font_color", Color("f8f4e8") if line.done else Color(0.7, 0.76, 0.78))
-		row.add_child(text)
-		var state := Label.new()
-		state.text = "DONE" if line.done else "not yet"
-		state.add_theme_font_size_override("font_size", 34)
-		state.add_theme_color_override("font_color", ACCENT if line.done else Color(0.5, 0.56, 0.58))
-		row.add_child(state)
+		text.add_theme_font_size_override("font_size", FONT)
+		text.add_theme_color_override("font_color", TEXT if line.done else TEXT_DIM)
+		inner.add_child(text)
 		goals_rows.add_child(row)
 		if line.done:
 			done += 1
-	(buttons["goals"] as Button).text = "%s  %d / %d" % [caption_for("goals"), done, lines.size()]
+	(buttons["goals"] as Button).text = "%s   %d / %d" % [caption_for("goals"), done, lines.size()]
 
 
 func _show_goals(show: bool) -> void:
@@ -119,25 +135,21 @@ func _show_goals(show: bool) -> void:
 func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(PIXELS)
-	panel.add_theme_stylebox_override("panel", _box(PANEL, PANEL, 0))
+	panel.add_theme_stylebox_override("panel", _box(PANEL, Color(0.14, 0.2, 0.23), 2, 22))
 	var margin := MarginContainer.new()
 	for side in ["left", "right"]:
-		margin.add_theme_constant_override("margin_" + side, 90)
+		margin.add_theme_constant_override("margin_" + side, 70)
 	for side in ["top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 36)
+		margin.add_theme_constant_override("margin_" + side, 40)
 	panel.add_child(margin)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
+	column.add_theme_constant_override("separation", 8)
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(column)
 	main_page = column
-	var heading := Label.new()
-	heading.text = title.to_upper()
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_font_size_override("font_size", 34)
-	heading.add_theme_color_override("font_color", ACCENT)
-	column.add_child(heading)
+	_add_heading(column, title)
 	for action: String in actions_for(in_house, has_goals):
-		var button := _make_button(caption_for(action), 56 if has_goals else 64)
+		var button := _make_button(caption_for(action))
 		if action == "goals":
 			button.pressed.connect(func() -> void: _show_goals(true))
 		else:
@@ -146,45 +158,59 @@ func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 		buttons[action] = button
 	if has_goals:
 		goals_page = VBoxContainer.new()
-		goals_page.add_theme_constant_override("separation", 10)
+		goals_page.add_theme_constant_override("separation", 8)
+		goals_page.alignment = BoxContainer.ALIGNMENT_CENTER
 		goals_page.visible = false
 		margin.add_child(goals_page)
-		var goals_heading := Label.new()
-		goals_heading.text = "GOALS"
-		goals_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		goals_heading.add_theme_font_size_override("font_size", 34)
-		goals_heading.add_theme_color_override("font_color", ACCENT)
-		goals_page.add_child(goals_heading)
+		_add_heading(goals_page, "Goals")
 		goals_rows = VBoxContainer.new()
-		goals_rows.add_theme_constant_override("separation", 14)
-		goals_rows.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		goals_rows.add_theme_constant_override("separation", 8)
 		goals_page.add_child(goals_rows)
-		var back := _make_button("Back", 64)
-		back.size_flags_vertical = Control.SIZE_SHRINK_END
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 10)
+		goals_page.add_child(gap)
+		var back := _make_button("Back")
 		back.pressed.connect(func() -> void: _show_goals(false))
 		goals_page.add_child(back)
 		buttons["goals_back"] = back
 	return panel
 
 
-# A menu button in the menu's look.
-func _make_button(text: String, min_height: int) -> Button:
+# The small title at the top of a page, with a thin line under it.
+func _add_heading(parent: Control, text: String) -> void:
+	var heading := Label.new()
+	heading.text = text.to_upper()
+	heading.add_theme_font_size_override("font_size", 26)
+	heading.add_theme_color_override("font_color", ACCENT)
+	heading.add_theme_constant_override("outline_size", 0)
+	parent.add_child(heading)
+	var line := ColorRect.new()
+	line.color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.45)
+	line.custom_minimum_size = Vector2(0, 2)
+	parent.add_child(line)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 6)
+	parent.add_child(gap)
+
+
+# A menu button: a flat dark row with the text on the left; the one the pointer is on gets a lighter fill and a bar of colour on its left.
+func _make_button(text: String) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(0, min_height)
-	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.custom_minimum_size = Vector2(0, ROW_HEIGHT)
 	button.focus_mode = Control.FOCUS_NONE if vr else Control.FOCUS_ALL
-	button.add_theme_font_size_override("font_size", 38)
-	button.add_theme_color_override("font_color", Color("f8f4e8"))
+	button.add_theme_font_size_override("font_size", FONT)
+	button.add_theme_color_override("font_color", TEXT)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
 	button.add_theme_color_override("font_focus_color", Color.WHITE)
-	var idle := _box(Color(0.1, 0.17, 0.2), Color(0.18, 0.32, 0.35), 4)
-	var lit := _box(Color(0.12, 0.3, 0.32), ACCENT, 4)
+	var idle := _row_box(ROW, 0)
+	var lit := _row_box(ROW_LIT, 6)
 	button.add_theme_stylebox_override("normal", idle)
 	button.add_theme_stylebox_override("hover", lit)
 	button.add_theme_stylebox_override("focus", lit)
-	button.add_theme_stylebox_override("pressed", _box(Color(0.2, 0.5, 0.5), Color.WHITE, 4))
+	button.add_theme_stylebox_override("pressed", _row_box(Color(0.16, 0.3, 0.32), 6))
 	button.mouse_entered.connect(func() -> void:
 		over = button
 		hovered.emit())
@@ -194,12 +220,23 @@ func _make_button(text: String, min_height: int) -> Button:
 	return button
 
 
-static func _box(fill: Color, edge: Color, border: int) -> StyleBoxFlat:
+static func _row_box(fill: Color, bar: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.set_corner_radius_all(12)
+	box.border_color = ACCENT
+	box.border_width_left = bar
+	box.content_margin_left = 28
+	box.content_margin_right = 28
+	return box
+
+
+static func _box(fill: Color, edge: Color, border: int, radius := 18) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = fill
 	box.border_color = edge
 	box.set_border_width_all(border)
-	box.set_corner_radius_all(18)
+	box.set_corner_radius_all(radius)
 	return box
 
 
