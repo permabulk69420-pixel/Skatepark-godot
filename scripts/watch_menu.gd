@@ -4,7 +4,7 @@
 class_name WatchMenu
 extends RefCounted
 
-signal chosen(action: String)   # "resume", "retry", "home", "grind_hand", "manual_hand" or "exit"
+signal chosen(action: String)   # "resume", "retry", "home", "grind_hand", "manual_hand" or "exit" (the goals page is handled inside the menu)
 signal hovered                    # the pointer moved onto a different button
 
 const FRAME := "res://assets/hud/menu_frame.glb"
@@ -29,11 +29,14 @@ var vr: bool
 var layer: CanvasLayer             # flat screen only
 var down_was := false
 var over: Button
+var main_page: VBoxContainer       # the buttons
+var goals_page: VBoxContainer      # the goals list (levels with goals), with a Back button
+var goals_rows: VBoxContainer
 
 
-func _init(parent: Node, p_vr: bool, in_house: bool, title: String) -> void:
+func _init(parent: Node, p_vr: bool, in_house: bool, title: String, has_goals := false) -> void:
 	vr = p_vr
-	content = _build(in_house, title)
+	content = _build(in_house, title, has_goals)
 	if vr:
 		_build_frame(parent)
 	else:
@@ -53,9 +56,11 @@ func _init(parent: Node, p_vr: bool, in_house: bool, title: String) -> void:
 
 
 # The buttons the menu has for this place (the house has nothing to retry and nowhere to go back to).
-static func actions_for(in_house: bool) -> Array:
+static func actions_for(in_house: bool, has_goals := false) -> Array:
 	if in_house:
 		return ["resume", "grind_hand", "manual_hand", "exit"]
+	if has_goals:
+		return ["resume", "retry", "goals", "home", "grind_hand", "manual_hand", "exit"]
 	return ["resume", "retry", "home", "grind_hand", "manual_hand", "exit"]
 
 
@@ -63,6 +68,7 @@ static func caption_for(action: String) -> String:
 	match action:
 		"resume": return "Resume"
 		"retry": return "Retry"
+		"goals": return "Goals"
 		"home": return "Return to house"
 		"grind_hand": return "Grind balance"
 		"manual_hand": return "Manual balance"
@@ -75,7 +81,42 @@ func set_hands(grind: String, manual: String) -> void:
 	(buttons["manual_hand"] as Button).text = "%s: %s hand up = right" % [caption_for("manual_hand"), manual]
 
 
-func _build(in_house: bool, title: String) -> Control:
+# The goals page: what each goal is and whether it is done. (Called each time the menu opens.)
+func set_goals(lines: Array) -> void:
+	if goals_rows == null:
+		return
+	for child in goals_rows.get_children():
+		goals_rows.remove_child(child)
+		child.queue_free()
+	var done := 0
+	for line: Dictionary in lines:
+		var row := HBoxContainer.new()
+		var text := Label.new()
+		text.text = line.text
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.add_theme_font_size_override("font_size", 38)
+		text.add_theme_color_override("font_color", Color("f8f4e8") if line.done else Color(0.7, 0.76, 0.78))
+		row.add_child(text)
+		var state := Label.new()
+		state.text = "DONE" if line.done else "not yet"
+		state.add_theme_font_size_override("font_size", 34)
+		state.add_theme_color_override("font_color", ACCENT if line.done else Color(0.5, 0.56, 0.58))
+		row.add_child(state)
+		goals_rows.add_child(row)
+		if line.done:
+			done += 1
+	(buttons["goals"] as Button).text = "%s  %d / %d" % [caption_for("goals"), done, lines.size()]
+
+
+func _show_goals(show: bool) -> void:
+	main_page.visible = not show
+	goals_page.visible = show
+	over = null
+	if not vr:
+		(buttons["goals_back" if show else "resume"] as Button).grab_focus()
+
+
+func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(PIXELS)
 	panel.add_theme_stylebox_override("panel", _box(PANEL, PANEL, 0))
@@ -88,39 +129,69 @@ func _build(in_house: bool, title: String) -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	margin.add_child(column)
+	main_page = column
 	var heading := Label.new()
 	heading.text = title.to_upper()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.add_theme_font_size_override("font_size", 34)
 	heading.add_theme_color_override("font_color", ACCENT)
 	column.add_child(heading)
-	for action: String in actions_for(in_house):
-		var button := Button.new()
-		button.text = caption_for(action)
-		button.custom_minimum_size = Vector2(0, 64)
-		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		button.focus_mode = Control.FOCUS_NONE if vr else Control.FOCUS_ALL
-		button.add_theme_font_size_override("font_size", 38)
-		button.add_theme_color_override("font_color", Color("f8f4e8"))
-		button.add_theme_color_override("font_hover_color", Color.WHITE)
-		button.add_theme_color_override("font_pressed_color", Color.WHITE)
-		button.add_theme_color_override("font_focus_color", Color.WHITE)
-		var idle := _box(Color(0.1, 0.17, 0.2), Color(0.18, 0.32, 0.35), 4)
-		var lit := _box(Color(0.12, 0.3, 0.32), ACCENT, 4)
-		button.add_theme_stylebox_override("normal", idle)
-		button.add_theme_stylebox_override("hover", lit)
-		button.add_theme_stylebox_override("focus", lit)
-		button.add_theme_stylebox_override("pressed", _box(Color(0.2, 0.5, 0.5), Color.WHITE, 4))
-		button.pressed.connect(func() -> void: chosen.emit(action))
-		button.mouse_entered.connect(func() -> void:
-			over = button
-			hovered.emit())
-		button.mouse_exited.connect(func() -> void:
-			if over == button:
-				over = null)
+	for action: String in actions_for(in_house, has_goals):
+		var button := _make_button(caption_for(action), 56 if has_goals else 64)
+		if action == "goals":
+			button.pressed.connect(func() -> void: _show_goals(true))
+		else:
+			button.pressed.connect(func() -> void: chosen.emit(action))
 		column.add_child(button)
 		buttons[action] = button
+	if has_goals:
+		goals_page = VBoxContainer.new()
+		goals_page.add_theme_constant_override("separation", 10)
+		goals_page.visible = false
+		margin.add_child(goals_page)
+		var goals_heading := Label.new()
+		goals_heading.text = "GOALS"
+		goals_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		goals_heading.add_theme_font_size_override("font_size", 34)
+		goals_heading.add_theme_color_override("font_color", ACCENT)
+		goals_page.add_child(goals_heading)
+		goals_rows = VBoxContainer.new()
+		goals_rows.add_theme_constant_override("separation", 14)
+		goals_rows.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		goals_page.add_child(goals_rows)
+		var back := _make_button("Back", 64)
+		back.size_flags_vertical = Control.SIZE_SHRINK_END
+		back.pressed.connect(func() -> void: _show_goals(false))
+		goals_page.add_child(back)
+		buttons["goals_back"] = back
 	return panel
+
+
+# A menu button in the menu's look.
+func _make_button(text: String, min_height: int) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(0, min_height)
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE if vr else Control.FOCUS_ALL
+	button.add_theme_font_size_override("font_size", 38)
+	button.add_theme_color_override("font_color", Color("f8f4e8"))
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.add_theme_color_override("font_focus_color", Color.WHITE)
+	var idle := _box(Color(0.1, 0.17, 0.2), Color(0.18, 0.32, 0.35), 4)
+	var lit := _box(Color(0.12, 0.3, 0.32), ACCENT, 4)
+	button.add_theme_stylebox_override("normal", idle)
+	button.add_theme_stylebox_override("hover", lit)
+	button.add_theme_stylebox_override("focus", lit)
+	button.add_theme_stylebox_override("pressed", _box(Color(0.2, 0.5, 0.5), Color.WHITE, 4))
+	button.mouse_entered.connect(func() -> void:
+		over = button
+		hovered.emit())
+	button.mouse_exited.connect(func() -> void:
+		if over == button:
+			over = null)
+	return button
 
 
 static func _box(fill: Color, edge: Color, border: int) -> StyleBoxFlat:
@@ -191,6 +262,9 @@ func _build_frame(parent: Node) -> void:
 
 # Show it: in the headset hung in front of `head` (a world transform), on a flat screen over the game.
 func open(head: Transform3D) -> void:
+	if goals_page != null:
+		main_page.visible = true
+		goals_page.visible = false
 	is_open = true
 	down_was = false
 	over = null

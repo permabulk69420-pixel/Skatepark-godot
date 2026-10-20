@@ -74,6 +74,8 @@ const LEVELS := {
 		"bounds": {"x": 39.55, "z": 35.55, "cx": 0.0, "cz": 0.0},
 		"camera_far": 280.0,
 		"decals": "Construction|Paint",
+		# Goals: reach these scores in one visit (your banked total). More kinds of goal come later.
+		"goals": [{"id": "score_5000", "score": 5000}, {"id": "score_15000", "score": 15000}, {"id": "score_20000", "score": 20000}],
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
 			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,

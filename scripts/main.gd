@@ -32,6 +32,7 @@ var run: Run                     # a timed run (null in a level without one)
 var face_card: FaceCard
 var watch: Watch                 # on the left wrist (headset only)
 var watch_menu: WatchMenu
+var goals: Goals                  # the park level's goals (null in a level without any)
 var grind_hand := "left"     # the hand that, raised, pushes the balance meter right (set in the menu)
 var manual_hand := "left"
 var aim_controller: XRController3D   # the right hand's pointing pose, for the menu's laser
@@ -141,7 +142,10 @@ func _ready() -> void:
 	prop = BoardProp.new(world)
 	carry = BoardCarry.new(hands, grab, board_view.root)
 	carry.released.connect(_on_board_released)
-	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name)
+	if info.has("goals"):
+		goals = Goals.new(level_id, info.goals)
+		goals.completed.connect(func(text: String) -> void: hud.say("Goal done: " + text, 3.5))
+	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name, goals != null)
 	grind_hand = HandBalance.pushing_hand("grind")
 	manual_hand = HandBalance.pushing_hand("manual")
 	watch_menu.set_hands(grind_hand, manual_hand)
@@ -350,6 +354,8 @@ func _set_menu(open: bool) -> void:
 	if open == watch_menu.is_open:
 		return
 	if open:
+		if goals != null:
+			watch_menu.set_goals(goals.lines())
 		watch_menu.open(camera.global_transform)
 	else:
 		watch_menu.close()
@@ -659,6 +665,8 @@ func _on_banked(points: int, total: int) -> void:
 	if run == null or run.state != Run.State.DONE:
 		_show_score()   # (the finished run's score stays put)
 	hud.say("+%s   Total %s" % [Score.format(points), Score.format(total)], 2.0)
+	if goals != null:
+		goals.check_total(total)   # (after the message above: a goal reached replaces it)
 
 
 # Sky, sun, fog and exposure for the level (its `look` in levels.gd). `night` is the level's night settings, if it has them.
