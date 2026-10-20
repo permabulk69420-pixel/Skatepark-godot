@@ -11,6 +11,7 @@ class Board:
 	const wheelHalfTrack := 0.082
 	const wheelHalfBase := 0.239
 	const length := 0.81
+	const width := 0.208  # (measured from the model; the trucks are the same width)
 
 class Tuning:
 	const gravity := 9.81
@@ -94,10 +95,11 @@ class Tuning:
 	const killY := -12.0
 
 	# Grinding
-	const grindAlign := 0.70  # rad (40°) from parallel for a 50-50
-	const slideAlign := 0.70  # rad (40°) from perpendicular for a boardslide
-	const truckLateral := 0.15  # how far the rail may be from the board's centreline
-	const slideLateral := 0.20  # how far from the middle of the deck a boardslide can catch
+	const grindAlign := 0.52  # rad (30°) from parallel for a 50-50
+	const slideAlign := 0.52  # rad (30°) from perpendicular for a boardslide
+	const grindReach := 0.10  # a rail this far outside the board's edge still catches (both kinds)
+	const truckLateral := Config.Board.width / 2.0 + grindReach  # 50-50: the rail anywhere under the width of the board, plus the reach, each side
+	const slideLateral := Config.Board.length / 2.0 + grindReach  # boardslide: the rail anywhere along the length of the board, plus the reach, each end
 	const catchBelow := 0.12
 	const catchAbove := 0.09
 	const catchMaxRise := 1.6
