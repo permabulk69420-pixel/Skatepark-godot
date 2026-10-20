@@ -399,7 +399,7 @@ func update(input: Command, dt: float) -> void:
 		(mode == Mode.GROUND or mode == Mode.AIR) and not board_off,
 		mode == Mode.AIR and air_time >= T.flipMinAir and flip == null and shuv == null)
 	if trick != null:
-		start_trick(trick.flip, trick.shuv)
+		start_trick(trick.flip, trick.shuv, int(trick.get("turns", 1)))
 	multi_flip_step(input.trick_stick)
 	detect_flick()
 
@@ -899,7 +899,7 @@ func air_step(h: float) -> void:
 	finish_air_trick()
 	if spin_lock and (flip == null or flip.progress >= 1.0) and (shuv == null or shuv.done) and absf(steer) < T.airSpinDeadzone:
 		spin_lock = false
-	var spin_target := 0.0 if (spin_lock or trick_controls.pending) else -spin_input * T.airSpinRate
+	var spin_target := 0.0 if (spin_lock or trick_controls.pending or trick_controls.chain_live) else -spin_input * T.airSpinRate
 	spin_vel = damp(spin_vel, spin_target, T.airSpinResponse, h)
 	body_flip_step(h)
 	heading = wrap_angle(heading + spin_vel * h)
@@ -1007,7 +1007,7 @@ func make_shuv(bs: bool) -> Shuv:
 
 
 # flip_kick: null for no flip, true for a kickflip, false for a heelflip. shuv_bs: null for no shove-it, else true for backside.
-func start_trick(flip_kick, shuv_bs) -> bool:
+func start_trick(flip_kick, shuv_bs, turns := 1) -> bool:
 	var no_flip: bool = typeof(flip_kick) == TYPE_NIL
 	var no_shuv: bool = typeof(shuv_bs) == TYPE_NIL
 	if mode != Mode.AIR or board_off or flip != null or shuv != null or (no_flip and no_shuv):
@@ -1017,6 +1017,9 @@ func start_trick(flip_kick, shuv_bs) -> bool:
 	trick_prefix = "Fakie " if fakie else ""
 	if not no_flip:
 		flip = make_flip(flip_kick)
+		if no_shuv and turns > 1:   # flicked twice or three times before B: a double or triple
+			flip.turns = clampi(turns, 1, T.maxFlipTurns)
+			flip.name = flip_label(flip, flip.turns)
 	if not no_shuv:
 		shuv = make_shuv(shuv_bs)
 	if flip != null and shuv != null:
