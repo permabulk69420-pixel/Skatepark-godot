@@ -32,6 +32,7 @@ var run: Run                     # a timed run (null in a level without one)
 var face_card: FaceCard
 var watch: Watch                 # on the left wrist (headset only)
 var watch_menu: WatchMenu
+var park: ParkTimer               # a park level's two-minute round (null in a level without one)
 var goals: Goals                  # the park level's goals (null in a level without any)
 var grind_hand := "left"     # the hand that, raised, pushes the balance meter right (set in the menu)
 var manual_hand := "left"
@@ -169,6 +170,10 @@ func _ready() -> void:
 		face_card = FaceCard.new(vr, camera, hud.layer)
 		sim.bail_to_spawn = true   # (a bail in a run starts it all again from the top: the clock, the score and you)
 		_show_time()
+	if info.has("timer"):
+		park = ParkTimer.new(float(info.timer))
+		face_card = FaceCard.new(vr, camera, hud.layer)
+		_show_park_time()
 	sfx = Sfx.new(world)
 	sfx.name = "Sfx"
 	add_child(sfx)
@@ -264,6 +269,8 @@ func _process(delta: float) -> void:
 	sim.update(command, dt)
 	if run != null:
 		_update_run(dt, before)
+	if park != null:
+		_update_park(dt)
 	rig_control.update(dt)
 	level.lods.update(camera.global_position)
 	board_view.update(sim, dt)
@@ -309,6 +316,41 @@ func _update_run(dt: float, before: Vector3) -> void:
 		if haptics:
 			haptics.pulse(0.8, 150)
 	_show_time()
+
+
+# The park round's clock, and what happens as it starts and ends.
+func _update_park(dt: float) -> void:
+	var moving := sim.speed > 1.0 or sim.mode != Skater.Mode.GROUND
+	var happened := park.update(dt, moving)
+	if happened == "start":
+		score.reset()
+		_show_score()
+		face_card.show_card("GO!", [], 1.0)
+		if haptics:
+			haptics.pulse(0.6, 80)
+	elif happened == "end":
+		var final_score := score.total + score.chain_points()   # (a trick still in the air as time runs out counts)
+		if goals != null:
+			goals.check_total(final_score)
+		var lines := ["SCORE  " + Score.format(final_score)]
+		if goals != null:
+			lines.append("GOALS  %d / %d" % [goals.done_count(), goals.list.size()])
+		face_card.show_card("TIME UP", lines, ParkTimer.RESULT_SECONDS)
+		_show_score(final_score)
+		if haptics:
+			haptics.pulse(0.8, 150)
+	elif happened == "again":
+		face_card.hide_card()
+		score.reset()
+		_show_score()
+	_show_park_time()
+
+
+func _show_park_time() -> void:
+	var text := park.text()
+	hud.set_time(text)
+	if watch != null:
+		watch.set_time(text)
 
 
 func _restart_run() -> void:
@@ -665,8 +707,8 @@ func _on_banked(points: int, total: int) -> void:
 	if run == null or run.state != Run.State.DONE:
 		_show_score()   # (the finished run's score stays put)
 	hud.say("+%s   Total %s" % [Score.format(points), Score.format(total)], 2.0)
-	if goals != null:
-		goals.check_total(total)   # (after the message above: a goal reached replaces it)
+	if goals != null and (park == null or park.counting()):
+		goals.check_total(total)   # (after the message above: a goal reached replaces it; once a round is over the result is settled)
 
 
 # Sky, sun, fog and exposure for the level (its `look` in levels.gd). `night` is the level's night settings, if it has them.
