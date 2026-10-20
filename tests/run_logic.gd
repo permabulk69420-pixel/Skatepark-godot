@@ -102,5 +102,23 @@ func run() -> void:
 	check(main.run.state == Run.State.WAITING and main.run.time == 0.0 and main.score.total == 0, "...with the clock and the score back at nothing")
 	main.queue_free()
 	await process_frame
+	# every level with a run: its lines are on the ground, and you start behind the start line
+	for id in ["flightline", "spillway"]:
+		var game: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+		game.level_id = id
+		root.add_child(game)
+		guard = 0
+		while not game.ready_to_play and guard < 6000:
+			await process_frame
+			guard += 1
+		check(game.run != null, "%s has a run" % id)
+		var hit := SkateWorld.Hit.new()
+		for gate in [game.run.start, game.run.finish]:
+			var ground: SkateWorld.Hit = game.world.ground(gate.pos.x, gate.pos.z, gate.pos.y + 3.0, hit, 6.0)
+			check(ground != null and absf(ground.y - gate.pos.y) < 1.0, "%s: a line at z %.0f is on the ground (%s)" % [id, gate.pos.z, str(snappedf(ground.y, 0.1)) if ground != null else "no ground"])
+		check((game.sim.spawn.pos - game.run.start.pos).dot(game.run.start.forward) < 0.0, "%s: you start behind the start line" % id)
+		check(game.get_node_or_null("StartLine") != null and game.get_node_or_null("FinishLine") != null, "%s: both lines are drawn" % id)
+		game.queue_free()
+		await process_frame
 	print("%s" % ("all fine" if failures == 0 else "%d FAILED" % failures))
 	quit(1 if failures > 0 else 0)
