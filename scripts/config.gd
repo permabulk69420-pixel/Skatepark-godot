@@ -91,7 +91,6 @@ class Tuning:
 	const wallLandSpan := 0.5  # …fully by this much steeper
 	const wallLandKeep := 0.75  # share of the speed that would have gone into the wall that carries on down it
 	const landBailImpact := 13.0  # m/s into the ground
-	const bumpHopTime := 0.3  # a hop shorter than this (seconds in the air), with no trick on it, is a bump: it cannot bail you for the landing angle or the hardness
 	const bounds := {"x": 54.6, "z": 46.3}
 	const killY := -12.0
 
