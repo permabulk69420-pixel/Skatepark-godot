@@ -88,6 +88,21 @@ func run() -> void:
 	s = spot()
 	check(s.x > 1.5 and s.x < 2.5, "the counter is in the way (x %.2f)" % s.x)
 
+	# in the headset your own body is never held back: lean right out over the coffee table and nothing pushes you or lifts you
+	main.foot.vr = true
+	main.camera.position = Vector3(0.0, 1.6, 0.0)
+	main.foot.place(Vector3(-5.0, 0.30, 0.0), 0.0)
+	for i in 30:
+		main.foot.update(0.05, Vector2.ZERO, 0.0)
+	var rig_before: Vector3 = main.rig.global_position
+	var floor_before: float = main.foot.floor_y
+	main.camera.global_position += Vector3(0.6, 0.0, 0.0)     # the head is now over the middle of the table
+	for i in 20:
+		main.foot.update(0.05, Vector2.ZERO, 0.0)
+	check(main.rig.global_position.distance_to(rig_before) < 1e-4, "leaning over the coffee table does not push you back (moved %.3f)" % main.rig.global_position.distance_to(rig_before))
+	check(absf(main.foot.floor_y - floor_before) < 1e-4, "...or stand you on it (floor %.3f -> %.3f)" % [floor_before, main.foot.floor_y])
+	main.foot.vr = false
+
 	# out of the front door and down the two steps
 	stand(0, -3.0, 0.30, PI)
 	walk(Vector2(0, 1), 8.0)
