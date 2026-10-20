@@ -6,6 +6,8 @@
 #
 # Eight equal 45° directions. Stick coordinates are the raw controller axes: left = -x, right = +x, up = -y, down = +y.
 # A trick's "flip" is null (no flip), true (kickflip) or false (heelflip); "shuv" is null (none), true (backside) or false.
+# Flicking the stick to the same side two or three times quickly, then B, makes a double or triple kickflip / heelflip: the trick comes
+# back with "turns" 2 or 3 (see `flicks`).
 class_name TrickControls
 extends RefCounted
 
@@ -24,10 +26,19 @@ var press_age := INF          # time since B was pressed, while it is waiting fo
 var last = null               # the last stick direction pushed: { x, y, age since the stick came back to centre }
 var ready_trick = null        # a trick picked on the ground, waiting for the board to leave it
 var ready_age := 0.0
+var flicks := 0               # how many quick flicks to the same side in a row (1..maxFlipTurns), counting from the stick's pushes
+var flick_side := ""          # which side ("left" or "right") those flicks were to
+var flick_age := INF          # seconds since the last of them began
+var flick_out := ""           # the side the stick is pushed to right now ("" when it is not pushed sideways)
 
 var pending: bool:
 	get:
 		return press_age <= T.trickWindow or ready_trick != null
+
+# Two or more quick flicks to one side have just been made: the board must not spin in the air from them (for a moment only).
+var chain_live: bool:
+	get:
+		return flicks >= 2 and flick_age <= T.multiFlipWindow + T.trickWindow
 
 
 static func stick_angle(x: float, y: float) -> float:
@@ -54,6 +65,9 @@ func reset() -> void:
 	press_age = INF
 	ready_trick = null
 	ready_age = 0.0
+	flicks = 0
+	flick_side = ""
+	flick_age = INF
 
 
 # Returns the trick to start now ({name, flip, shuv}), or null.
@@ -61,7 +75,19 @@ func sample(button: bool, x: float, y: float, dt: float, enabled: bool, can_star
 	var pressed := button and not held
 	held = button
 
-	var out := stick_direction(x, y) != "center"
+	var direction := stick_direction(x, y)
+	flick_age += dt
+	var side_now := direction if (direction == "left" or direction == "right") else ""
+	if side_now != "" and side_now != flick_out:
+		# A new push to the side. Soon enough after the last one, the same way: one more flick in the chain.
+		if side_now == flick_side and flick_age <= T.multiFlipWindow:
+			flicks = mini(flicks + 1, T.maxFlipTurns)
+		else:
+			flick_side = side_now
+			flicks = 1
+		flick_age = 0.0
+	flick_out = side_now
+	var out := direction != "center"
 	if out:
 		last = {"x": x, "y": y, "age": 0.0}
 	elif last != null:
@@ -82,10 +108,13 @@ func sample(button: bool, x: float, y: float, dt: float, enabled: bool, can_star
 
 	# B is live and there is a direction: now if the stick is pushed, or the push you just let go of.
 	if ready_trick == null and press_age != INF and last != null:
-		var trick = TRICKS.get(stick_direction(last.x, last.y))
+		var picked_direction := stick_direction(last.x, last.y)
+		var trick = TRICKS.get(picked_direction)
 		press_age = INF   # one press, one trick (an upward direction uses it up and does nothing)
 		last = null
 		if trick != null:
+			trick = trick.duplicate()
+			trick["turns"] = flicks if (picked_direction == flick_side and (picked_direction == "left" or picked_direction == "right")) else 1
 			ready_trick = trick
 			ready_age = 0.0
 
