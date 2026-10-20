@@ -213,7 +213,22 @@ func test_board_off() -> void:
 		r.right.position += Vector3(0.02, 0.0, 0.0)
 		frame(r)
 	check(r.board.global_position.distance_to(start) > 0.4, "the board follows the hand (moved %.0f cm)" % (r.board.global_position.distance_to(start) * 100.0))
-	check(r.sim.off_trick.name == "Christ Air", "held well away from your feet it is a Christ Air (%.0f cm)" % (r.sim.off_trick.far * 100.0))
+	check(r.sim.off_trick.name == "Board Off", "held away from your feet on its own is still just a Board Off (%.0f cm)" % (r.sim.off_trick.far * 100.0))
+	# arms out in a T, the board in the right hand: a Christ Air
+	var head := r.camera.global_position
+	var right_was := r.right.global_position
+	var left_was := r.left.global_position
+	r.right.global_position = head + Vector3(0.75, -0.2, 0.0)
+	r.left.global_position = head + Vector3(-0.75, -0.2, 0.0)
+	for i in 8:
+		frame(r)
+	check(r.sim.off_trick.name == "Board Off", "a T for a moment is not enough yet")
+	for i in 30:
+		frame(r)
+	check(r.sim.off_trick.name == "Christ Air", "arms out in a T while holding it is a Christ Air (%.2fs)" % r.sim.off_trick.tpose)
+	r.right.global_position = right_was    # (and back, for the rest of the test)
+	r.left.global_position = left_was
+	frame(r)
 	# trying to catch it way off does nothing
 	events.clear()
 	r.sim.pos = Vector3(0, 0, 0)
@@ -281,3 +296,14 @@ func test_judge_catch() -> void:
 	check(v.quality == "clean" and v.reversed, "nose for tail is fine, and ridden the other way round")
 	v = BoardOff.judge_catch(Vector3(0, 0.1, 0), Quaternion(Vector3.FORWARD, PI), Vector3.ZERO, feet_q)
 	check(v.quality == "miss", "upside down: a miss")
+	print("the T pose of a Christ Air")
+	var head := Vector3(0, 1.7, 0)
+	check(BoardOff.is_tpose(head, Vector3(-0.75, 1.5, 0), Vector3(0.75, 1.5, 0)), "arms straight out either side at shoulder height: a T")
+	check(BoardOff.is_tpose(head, Vector3(-0.6, 1.4, 0.1), Vector3(0.7, 1.6, -0.1)), "roughly a T is enough")
+	check(not BoardOff.is_tpose(head, Vector3(-0.3, 1.5, 0), Vector3(0.3, 1.5, 0)), "hands close together is not")
+	check(not BoardOff.is_tpose(head, Vector3(-0.5, 1.5, -0.7), Vector3(0.5, 1.5, -0.7)), "both arms out in front is not")
+	check(not BoardOff.is_tpose(head, Vector3(0.4, 1.5, 0), Vector3(1.4, 1.5, 0)), "both arms out to the same side is not")
+	check(not BoardOff.is_tpose(head, Vector3(-0.75, 0.6, 0), Vector3(0.75, 0.6, 0)), "arms down by the knees is not")
+	check(not BoardOff.is_tpose(head, Vector3(-0.75, 2.4, 0), Vector3(0.75, 2.4, 0)), "arms way over the head is not")
+	check(not BoardOff.is_tpose(head, Vector3(-0.75, 1.2, 0), Vector3(0.75, 1.75, 0)), "one hand much higher than the other is not")
+	check(BoardOff.is_tpose(Vector3(3, 1.7, -2), Vector3(2.25, 1.5, -2), Vector3(3.75, 1.5, -2)), "wherever you are standing")

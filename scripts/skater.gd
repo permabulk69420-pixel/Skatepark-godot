@@ -810,7 +810,7 @@ func detach_board() -> bool:
 	if mode != Mode.AIR or board_off or flip != null or shuv != null:
 		return false
 	board_off = true
-	off_trick = {"name": "Board Off", "far": 0.0}
+	off_trick = {"name": "Board Off", "far": 0.0, "tpose": 0.0}
 	trick_controls.reset()
 	event.emit("detach", {})
 	return true
