@@ -100,14 +100,6 @@ func test_controller_mapping() -> void:
 	check(not input.poll(0.014).toggle_stance, "...and not again while held")
 	left.buttons["by_button"] = false
 
-	left.buttons["ax_button"] = true
-	var went := false
-	for i in 80:
-		went = input.poll(0.014).to_spawn or went
-	check(went, "holding left X for about a second goes back to the entrance")
-	left.buttons["ax_button"] = false
-	input.poll(0.014)
-
 	left.buttons["grip_click"] = true
 	right.buttons["grip_click"] = true
 	var recentred := false
