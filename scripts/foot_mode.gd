@@ -14,6 +14,7 @@ const EYE := 1.65                # flat screen
 const TURN_RATE := deg_to_rad(120.0)   # radians per second with the stick right over (a guess: change it to taste)
 const WALL_PROBES := [0.4, 1.0, 1.55]   # heights above the feet the walls are felt at (just above the biggest step)
 const SETTLE_FRAMES := 24
+const SLOPE_FOLLOW := 0.12       # headset, standing still: the floor under the head may differ this much from where the feet are and still be followed
 
 var rig: Node3D
 var camera: Camera3D
@@ -111,6 +112,9 @@ func update(dt: float, move: Vector2, turn: float) -> bool:
 		var right := Vector3(cos(yaw), 0.0, -sin(yaw))
 		var m := move.limit_length(1.0)
 		delta = (forward * m.y + right * m.x) * WALK_SPEED * dt
+	if vr and delta == Vector3.ZERO:
+		_follow_floor_standing(start, dt)
+		return true   # (leaning over a table or reaching about for real is never held back or lifted: only the stick walks into things)
 	var moved := _try(start, delta)
 	if moved == start and delta != Vector3.ZERO:       # slide along a wall: try each axis on its own
 		moved = _try(start, Vector3(delta.x, 0.0, 0.0))
@@ -131,6 +135,19 @@ func update(dt: float, move: Vector2, turn: float) -> bool:
 	rig.global_position += shift
 	rig.global_position.y = floor_y
 	return grounded
+
+
+# Standing still in the headset: the feet only follow a small change in the floor (a ramp you are standing on), not whatever is under
+# your head when you lean out over something (a coffee table, a counter).
+func _follow_floor_standing(at: Vector3, dt: float) -> void:
+	var floor_under := _floor(at)
+	if floor_under == null or absf(floor_under.y - floor_y) > SLOPE_FOLLOW:
+		return
+	if floor_under.y > floor_y:
+		floor_y = minf(floor_under.y, floor_y + RISE_RATE * dt)
+	else:
+		floor_y = maxf(floor_under.y, floor_y - FALL_RATE * dt)
+	rig.global_position.y = floor_y
 
 
 # The position after trying to move `delta` from `from`: unchanged if the way is blocked.
