@@ -1458,6 +1458,12 @@ func fit_plane(w: Wheels) -> void:
 
 
 # ----- grinding --------------------------------------------------------------------------------------------
+# How far from the middle of the board a rail still catches it, with the board turned `theta` from parallel with the rail: anywhere the
+# board would touch it (its footprint across the rail), plus the reach each side. 0: just the width; 90° (a boardslide): its length.
+static func board_reach(theta: float) -> float:
+	return Config.Board.length / 2.0 * sin(theta) + Config.Board.width / 2.0 * cos(theta) + Config.Tuning.grindReach
+
+
 func try_grind(np: Vector3, h: float) -> bool:
 	if require_grind and grind_arm <= 0.0:
 		return false
@@ -1486,15 +1492,13 @@ func try_grind(np: Vector3, h: float) -> bool:
 			var cx := seg.a.x + abx * t
 			var cz := seg.a.z + abz * t
 			var d := hypot(np.x - cx, np.z - cz)
-			if d > (T.stallLateral if path.kind == "coping" else T.slideLateral):
+			if d > (T.stallLateral if path.kind == "coping" else board_reach(PI / 2.0)):
 				continue
 			var theta := acos(clampf(absf(hv.x * seg.dir_h.x + hv.z * seg.dir_h.y), 0.0, 1.0))
-			var gmode := ""
-			if theta <= T.grindAlign and d <= T.truckLateral:
-				gmode = "truck"
-			elif theta >= PI / 2.0 - T.slideAlign and d <= (T.stallLateral if path.kind == "coping" else T.slideLateral):
-				gmode = "slide"
-			if gmode == "":
+			# However the board is turned it is one or the other: along the rail is a 50-50, across it a boardslide.
+			var gmode := "truck" if theta < T.grindSplit else "slide"
+			var reach := (T.stallLateral if gmode == "slide" else board_reach(0.0)) if path.kind == "coping" else board_reach(theta)
+			if d > reach:
 				continue
 			if gmode == "slide" and path.kind == "coping" and rolling_into_pit(seg, np):
 				continue
@@ -1502,11 +1506,10 @@ func try_grind(np: Vector3, h: float) -> bool:
 			var dy := np.y + (BOARD.truckBottom if gmode == "truck" else path.slide_contact) - top
 			if dy < -T.catchBelow or dy > T.catchAbove + maxf(0.0, -vel.y * h):
 				continue
-			var lateral_ref: float = T.truckLateral if gmode == "truck" else (T.stallLateral if path.kind == "coping" else T.slideLateral)
-			var score := d / lateral_ref + absf(dy) / 0.1
+			var score := d / reach + absf(dy) / 0.1
 			if score < best_score:
 				best_score = score
-				best = {"path": path, "seg": seg, "i": i, "t": t, "mode": gmode, "theta": theta, "d": d}
+				best = {"path": path, "seg": seg, "i": i, "t": t, "mode": gmode, "theta": theta, "d": d, "reach": reach}
 	if best == null:
 		return false
 	return start_grind(best, np)
@@ -1673,8 +1676,8 @@ func start_grind(c: Dictionary, np: Vector3, np_is_pos := false) -> bool:
 		np = pos   # (the web build's np was this very vector, so it now reads as the spot on the rail)
 	g.snap = np - pos
 	# Sloppy entries start the meter off-centre: lateral error and angle error both count.
-	var limit: float = T.truckLateral if gmode == "truck" else (T.stallLateral if path.kind == "coping" else T.slideLateral)
-	var angle_limit: float = T.grindAlign if gmode == "truck" else T.slideAlign
+	var limit: float = c.get("reach", T.stallLateral if (gmode == "slide" and path.kind == "coping") else board_reach(0.0 if gmode == "truck" else PI / 2.0))
+	var angle_limit: float = T.grindSplit
 	var dev := theta if gmode == "truck" else PI / 2.0 - theta
 	var off := Vector3(np.x - (seg.a.x + (seg.b.x - seg.a.x) * t), 0.0, np.z - (seg.a.z + (seg.b.z - seg.a.z) * t))
 	var lateral := off.dot(g.tilt)
@@ -1811,7 +1814,9 @@ func grind_step(h: float) -> void:
 	# Balance: left unattended the board leans over and falls off; a push from the hands pushes the lean back.
 	var instab := minf(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax) * (1.0 + (T.variantHard - 1.0) * absf(g.vb))
 	var wobble := T.balWobble * (0.6 * sin(2.3 * g.time + g.p1) + 0.4 * sin(5.7 * g.time + g.p2))
-	var acc := instab * g.bal + wobble + T.balControl * lean - T.balDamp * g.bal_vel
+	# The first moments of a grind the pull towards falling is weaker, so there is time to get the hands up.
+	var grace := lerpf(T.balGraceStart, 1.0, clampf(g.time / T.balGrace, 0.0, 1.0))
+	var acc := (instab * g.bal + wobble) * grace + T.balControl * lean - T.balDamp * g.bal_vel
 	g.bal_vel += acc * h
 	g.bal += g.bal_vel * h
 	if absf(g.bal) >= 1.0:
