@@ -102,7 +102,6 @@ class Tuning:
 	const slideLateral := Config.Board.length / 2.0 + grindReach  # boardslide: the rail anywhere along the length of the board, plus the reach, each end
 	const catchBelow := 0.12
 	const catchAbove := 0.09
-	const catchMaxRise := 1.6
 	const grindMinSpeed := 0.9
 	const magnetReach := 0.7  # press grind within this far (horizontally) of a coping, up the wall or on the deck, and it latches on…
 	const magnetBelow := 0.9  # …if the board is no more than this far below the lip…
