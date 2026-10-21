@@ -58,7 +58,7 @@ func run() -> void:
 
 	# What each place offers
 	check(WatchMenu.actions_for(false) == ["resume", "retry", "home", "grind_hand", "manual_hand", "exit"], "a level: resume, retry, return to house, the two balance hands, exit")
-	check(WatchMenu.actions_for(true) == ["resume", "grind_hand", "manual_hand", "exit"], "the house: no retry or return to house")
+	check(WatchMenu.actions_for(true) == ["resume", "build", "grind_hand", "manual_hand", "exit"], "the house: build mode, but no retry or return to house")
 
 	# On a flat screen: M opens it, the game stops, a button picks
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()

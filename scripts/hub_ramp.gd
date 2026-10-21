@@ -26,8 +26,9 @@ static func add_to(root: Node3D) -> bool:
 	model.transform = xf
 	root.add_child(model)
 
-	# One static collision mesh. There is no hidden wall behind either transition:
-	# the board's front wheels can extend behind the riding skin near the lip.
+	# One static collision mesh, under the model so that build mode moves the two together.
+	# There is no hidden wall behind either transition: the board's front wheels can extend
+	# behind the riding skin near the lip.
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = shape.get_faces()
@@ -36,9 +37,8 @@ static func add_to(root: Node3D) -> bool:
 	var collider := MeshInstance3D.new()
 	collider.name = "COL_WoodenHalfPipe"
 	collider.mesh = mesh
-	collider.transform = xf
 	collider.set_meta("extras", {"role": "collision"})
-	root.add_child(collider)
+	model.add_child(collider)
 
 	# The GLB includes grind_path markers generated from both coping pipes and all
 	# seven top handrails. LevelLoader discovers them under the model with its normal scan.

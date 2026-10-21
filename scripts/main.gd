@@ -6,7 +6,7 @@ const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space t
 const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
 const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go home (or, at home, to the next level)
 const STEP_OFF_HOLD := 0.6       # seconds the right stick is held down (Q on a keyboard: a tap) to step off the board
-const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps off the board (walk over it to step back on), Space jumps · hold L: next level\nHeadset: left stick walks, right stick turns smoothly, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A jumps · squeeze a grip next to the board to pick it up · hold the right stick down to step off the board, walk over it to step on · hold the left menu button for the next level"
+const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps off the board (walk over it to step back on), Space jumps · hold L: next level · M menu: build mode\nHeadset: left stick walks, right stick turns smoothly, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A jumps · squeeze a grip next to the board to pick it up · hold the right stick down to step off the board, walk over it to step on · hold the left menu button for the next level"
 
 var level_id := ""               # a test can set it before the scene is added; `-- level=<id>` on the command line does too; empty: the house
 var info: Dictionary
@@ -47,6 +47,7 @@ var dragging := false
 var held_level_switch := 0.0
 var switching := false
 var hub: Hub                     # the house (null in every other level)
+var build: BuildMode             # moving things about the house (null in every other level)
 var foot: FootMode
 var on_foot := false
 var flat_remote_held := false
@@ -186,7 +187,15 @@ func _ready() -> void:
 		hub = Hub.new(level, self, vr)
 		if hub.tv != null:
 			hub.tv.chosen.connect(_go_to)
-		_stand_up(level.spawn_pos, level.spawn_heading)
+		build = BuildMode.new(level, get_world_3d().direct_space_state, self, vr)
+		var back := BuildMode.take_come_back()   # (the house was loaded again by build mode: you stay where you were)
+		if back.is_empty():
+			_stand_up(level.spawn_pos, level.spawn_heading)
+		else:
+			_stand_up(back.pos, back.yaw)
+			if back.get("building", false):
+				_start_building()
+				_set_menu(true)
 
 	loading_layer.queue_free()
 	hud.set_status("")
@@ -232,6 +241,9 @@ func _process(delta: float) -> void:
 		_set_menu(not watch_menu.is_open)
 	if watch_menu.is_open:
 		_process_menu(dt)
+		return
+	if build != null and build.active:
+		_process_build(dt)
 		return
 	if on_foot:
 		_process_foot(dt)
@@ -398,12 +410,14 @@ func _set_menu(open: bool) -> void:
 	if open:
 		if goals != null:
 			watch_menu.set_goals(goals.lines())
+		if build != null:
+			build.hide()
 		watch_menu.open(camera.global_transform)
 	else:
 		watch_menu.close()
 	var right := _hand_state("right")
 	if right != null:
-		right.pointing = open
+		right.pointing = open or (build != null and build.active)   # (building, the right hand points too)
 	if haptics:
 		haptics.pulse(0.35, 30)
 
@@ -435,6 +449,79 @@ func _on_menu_chosen(action: String) -> void:
 			watch_menu.set_hands(grind_hand, manual_hand)
 		"exit":
 			get_tree().quit()
+		"build":
+			_start_building()
+		"build_resume":
+			_set_menu(false)
+		"add_arcade", "add_rail":
+			_set_menu(false)
+			var facing := foot.facing()
+			build.add(action.substr(4), foot.body() + Vector3(-sin(facing), 0.0, -cos(facing)) * 1.5, facing)
+		"build_done":
+			HubLayout.write(build.layout())
+			_reload_house(false)
+		"build_cancel":
+			_reload_house(false)
+		"build_reset":
+			HubLayout.clear()
+			_reload_house(true)
+
+
+# Into build mode (from the house's menu): on foot, the menu turned to the build page.
+func _start_building() -> void:
+	if not on_foot:
+		_stand_up(sim.pos, sim.heading, Transform3D(Basis(sim.board_quaternion(false)), sim.pos), sim.vel, true)
+	build.start()
+	watch_menu.set_building(true)
+
+
+# Build mode is over (or starts again from the house as it was): the house is loaded again with you standing where you are.
+func _reload_house(keep_building: bool) -> void:
+	BuildMode.come_back = {"pos": foot.body(), "yaw": foot.facing(), "building": keep_building}
+	_go_to(Levels.HUB)
+
+
+# Building: walk about as on foot, and point to pick things up, carry them, turn them and put them down.
+func _process_build(dt: float) -> void:
+	var move := Vector2.ZERO
+	var turn := 0.0
+	var pointer: Node3D = camera
+	var grab_down := false
+	var turn_axis := 0.0
+	var remove_down := false
+	if vr:
+		move = left_controller.get_vector2("primary")
+		turn_axis = right_controller.get_vector2("primary").x
+		turn = turn_axis if build.held == null else 0.0   # (holding a piece, the stick turns it instead of you)
+		pointer = aim_controller if aim_controller.get_has_tracking_data() else right_controller
+		grab_down = right_controller.is_button_pressed("trigger_click")
+		remove_down = right_controller.is_button_pressed("by_button")
+	else:
+		move = Vector2(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
+		grab_down = Input.is_key_pressed(KEY_E)
+		turn_axis = float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT))
+		remove_down = Input.is_key_pressed(KEY_X) or Input.is_key_pressed(KEY_DELETE)
+	foot.update(dt, move, turn)
+	hands.update(dt)
+	var happened := build.update(pointer.global_position, -pointer.global_basis.z, grab_down, turn_axis, remove_down)
+	var target := build.held if build.held != null else build.hovered
+	match happened:
+		"picked":
+			hud.say("Carrying the %s · E puts it down · arrows turn it · X removes it" % build.piece_name(target).to_lower(), 2.5)
+		"placed":
+			hud.say("Put down · M: Done saves it", 2.0)
+		"removed":
+			hud.say("Removed", 1.2)
+		"kept":
+			hud.say("The house's own pieces can be moved, not removed", 2.0)
+	if haptics and happened != "":
+		haptics.pulse(0.2 if happened == "turned" else 0.45, 25, "right")
+	if happened == "" and target != null and build.held == null and hud.message_time <= 0.0:
+		hud.say("%s · E picks it up" % build.piece_name(target), 0.2)
+	_board_on_foot(dt, false)
+	level.lods.update(camera.global_position)
+	sfx.hush(dt)
+	hud.update(dt)
 
 
 func _turn_view(dx: float, dy: float) -> void:

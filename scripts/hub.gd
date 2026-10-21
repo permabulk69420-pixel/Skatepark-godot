@@ -13,7 +13,8 @@ var tv: HubTv
 var lamps: Array[OmniLight3D] = []
 
 
-# The scene to read as the house: the model at the hub's file when it exists, otherwise the blockout, with the half pipe added to either.
+# The scene to read as the house: the model at the hub's file when it exists, otherwise the blockout, with the half pipe added to either,
+# and everything build mode has moved or added where it was left.
 static func build_root() -> Node3D:
 	var info: Dictionary = Levels.LEVELS[Levels.HUB]
 	var root: Node3D = null
@@ -25,6 +26,8 @@ static func build_root() -> Node3D:
 		root = HubBlockout.build()
 	HubDriveway.add_to(root)
 	HubRamp.add_to(root)
+	BuildPieces.mark_house(root)
+	HubLayout.apply(root, HubLayout.read())
 	return root
 
 
@@ -36,6 +39,7 @@ func _init(p_level: LevelLoader, parent: Node3D, vr := false) -> void:
 		for prefix: String in INDOOR:
 			if node.name.begins_with(prefix):
 				(node as MeshInstance3D).layers = INDOOR_LAYER
+	_light_pieces()
 	var sun := parent.find_child("Sun", false, false) as DirectionalLight3D
 	if sun != null:
 		sun.light_cull_mask &= ~INDOOR_LAYER
@@ -52,3 +56,27 @@ func _init(p_level: LevelLoader, parent: Node3D, vr := false) -> void:
 	var spots := level.markers_with("remote_spot")
 	if screen != null and not spots.is_empty():
 		tv = HubTv.new(screen, spots[0], parent, Levels.saved(), vr)
+
+
+# Build mode's pieces are lit as indoors when they stand inside the house (over its floor), and by the sun when they are out in the yard.
+func _light_pieces() -> void:
+	var inside := AABB()
+	var first := true
+	var pieces := BuildPieces.find_all(level.root)
+	for node in level.render_meshes:
+		var mesh := node as MeshInstance3D
+		if not mesh.name.begins_with("Interior_") or pieces.has(mesh):
+			continue
+		var box := mesh.global_transform * mesh.get_aabb()
+		inside = box if first else inside.merge(box)
+		first = false
+	if first:
+		return
+	for piece in pieces:
+		var at := piece.global_position
+		var indoors := at.x > inside.position.x and at.x < inside.end.x and at.z > inside.position.z and at.z < inside.end.z
+		var meshes: Array = piece.find_children("*", "MeshInstance3D", true, false)
+		if piece is MeshInstance3D:
+			meshes.append(piece)
+		for mesh: MeshInstance3D in meshes:
+			mesh.layers = INDOOR_LAYER if indoors else 1

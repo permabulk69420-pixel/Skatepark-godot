@@ -1,10 +1,10 @@
-# The menu: Resume, Retry, Return to house, the two balance-hand choices, Exit. In the headset it is the big frame from the watch (assets/hud/menu_frame.glb) hung
+# The menu: Resume, Retry, Return to house, the two balance-hand choices, Exit (and in the house, Build mode, with its own page). In the headset it is the big frame from the watch (assets/hud/menu_frame.glb) hung
 # in front of you, with a laser from the right hand to point and the trigger to press. On a flat screen it is a plain overlay
 # (M opens it, the mouse or Up / Down / Enter choose).
 class_name WatchMenu
 extends RefCounted
 
-signal chosen(action: String)   # "resume", "retry", "home", "grind_hand", "manual_hand" or "exit" (the goals page is handled inside the menu)
+signal chosen(action: String)   # "resume", "retry", "home", "build", "grind_hand", "manual_hand" or "exit", or one of BUILD_ACTIONS (the goals page is handled inside the menu)
 signal hovered                    # the pointer moved onto a different button
 
 const FRAME := "res://assets/hud/menu_frame.glb"
@@ -23,6 +23,8 @@ const TEXT := Color("e9eef0")
 const TEXT_DIM := Color("7f9298")
 const ROW_HEIGHT := 56
 const FONT := 32
+const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "build_done", "build_cancel", "build_reset"]
+const BUILD_HINT := "Trigger: pick up / put down · stick: turn it · B: remove an added piece\nOn a flat screen: E, the arrow keys, X"
 
 var is_open := false
 var root: Node3D
@@ -38,6 +40,8 @@ var over: Button
 var main_page: VBoxContainer       # the buttons
 var goals_page: VBoxContainer      # the goals list (levels with goals), with a Back button
 var goals_rows: VBoxContainer
+var build_page: VBoxContainer      # build mode's page (the house only)
+var building := false              # while building, the menu opens on that page
 
 
 func _init(parent: Node, p_vr: bool, in_house: bool, title: String, has_goals := false) -> void:
@@ -61,10 +65,10 @@ func _init(parent: Node, p_vr: bool, in_house: bool, title: String, has_goals :=
 		centre.add_child(content)
 
 
-# The buttons the menu has for this place (the house has nothing to retry and nowhere to go back to).
+# The buttons the menu has for this place (the house has nothing to retry and nowhere to go back to, but it can be built in).
 static func actions_for(in_house: bool, has_goals := false) -> Array:
 	if in_house:
-		return ["resume", "grind_hand", "manual_hand", "exit"]
+		return ["resume", "build", "grind_hand", "manual_hand", "exit"]
 	if has_goals:
 		return ["resume", "retry", "goals", "home", "grind_hand", "manual_hand", "exit"]
 	return ["resume", "retry", "home", "grind_hand", "manual_hand", "exit"]
@@ -76,6 +80,13 @@ static func caption_for(action: String) -> String:
 		"retry": return "Retry"
 		"goals": return "Goals"
 		"home": return "Return to house"
+		"build": return "Build mode"
+		"build_resume": return "Keep building"
+		"add_arcade": return "Add an arcade machine"
+		"add_rail": return "Add a flat rail"
+		"build_done": return "Done: save it"
+		"build_cancel": return "Cancel: undo the changes"
+		"build_reset": return "Put everything back"
 		"grind_hand": return "Grind balance"
 		"manual_hand": return "Manual balance"
 		_: return "Exit"
@@ -132,6 +143,18 @@ func _show_goals(show: bool) -> void:
 		(buttons["goals_back" if show else "resume"] as Button).grab_focus()
 
 
+# Into build mode (or out): the menu opens on the build page, and shows it now if it is up.
+func set_building(on: bool) -> void:
+	building = on
+	if build_page == null:
+		return
+	main_page.visible = not on
+	build_page.visible = on
+	over = null
+	if is_open and not vr:
+		(buttons["build_resume" if on else "resume"] as Button).grab_focus()
+
+
 func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(PIXELS)
@@ -173,6 +196,24 @@ func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 		back.pressed.connect(func() -> void: _show_goals(false))
 		goals_page.add_child(back)
 		buttons["goals_back"] = back
+	if in_house:
+		build_page = VBoxContainer.new()
+		build_page.add_theme_constant_override("separation", 8)
+		build_page.alignment = BoxContainer.ALIGNMENT_CENTER
+		build_page.visible = false
+		margin.add_child(build_page)
+		_add_heading(build_page, "Build")
+		for action: String in BUILD_ACTIONS:
+			var button := _make_button(caption_for(action))
+			button.pressed.connect(func() -> void: chosen.emit(action))
+			build_page.add_child(button)
+			buttons[action] = button
+		var hint := Label.new()
+		hint.text = BUILD_HINT
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hint.add_theme_font_size_override("font_size", 20)
+		hint.add_theme_color_override("font_color", TEXT_DIM)
+		build_page.add_child(hint)
 	return panel
 
 
@@ -300,8 +341,10 @@ func _build_frame(parent: Node) -> void:
 # Show it: in the headset hung in front of `head` (a world transform), on a flat screen over the game.
 func open(head: Transform3D) -> void:
 	if goals_page != null:
-		main_page.visible = true
 		goals_page.visible = false
+	main_page.visible = not building
+	if build_page != null:
+		build_page.visible = building
 	is_open = true
 	down_was = false
 	over = null
@@ -314,7 +357,7 @@ func open(head: Transform3D) -> void:
 		root.visible = true
 	else:
 		layer.visible = true
-		(buttons["resume"] as Button).grab_focus()
+		(buttons["build_resume" if building else "resume"] as Button).grab_focus()
 
 
 func close() -> void:
