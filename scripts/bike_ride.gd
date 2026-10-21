@@ -33,6 +33,7 @@ var grips := {}                    # "left" / "right" -> { state, from: the hand
                                    # the hand had for holding the board (put back when it lets go) }
 static var bar_grip = null         # the solution, read once
 var rig_rel := Transform3D.IDENTITY   # the rig in the bike's level frame (headset)
+var head_rest := Vector3.ZERO      # where the headset was in the rig when you got on (headset)
 var twist := 0.0                   # how far the right grip is twisted back (radians)
 var look_yaw := 0.0                # a flat screen: dragging to look about
 var look_pitch := 0.0
@@ -60,6 +61,7 @@ func _init(p_bike: DirtBike, p_rig: Node3D, p_camera: Camera3D, p_hands: VrHands
 		var basis := Basis(Vector3.UP, bike.yaw - head_yaw)
 		var xf := Transform3D(basis, Vector3(target.x, target.y + SEATED_EYE - head_local.y, target.z) - basis * Vector3(head_local.x, 0.0, head_local.z))
 		rig_rel = bike.upright_transform().affine_inverse() * xf
+		head_rest = head_local
 	_follow()
 
 
@@ -182,17 +184,22 @@ func end() -> Dictionary:
 	return {"pos": level * Vector3(-STEP_OFF_SIDE, 0.0, 0.1), "yaw": bike.yaw}
 
 
-# The rig rides on the bike: it turns and pitches with it, and sits on its seat, going over with the seat as the bike leans. It does not roll
-# with the lean as well: your own tilt rolls your view, and the bike leans as far as your head does, so the two stay together and the bars stay
-# at your hands. (Rolled by the lean too, your view turned twice as far as you leaned, and the bike never moved from your head.) On a flat
-# screen the eye is over the pegs, looking down the road.
+# The rig rides on the bike: it turns and pitches with it. Your head stays on the bike's centre line as it goes over, a rider's head over
+# the seat and the bars, however far it leans; only your own tilt rolls your view (the bike leans as far as your head does, so the two stay
+# together and the bars stay at your hands). Rolled by the lean too, your view turned twice as far as you leaned. Your head still moves
+# up and down and back and forward as you move it, but not sideways: that is the bike's, in its lean. On a flat screen the eye is over the
+# pegs, looking down the road.
 func _follow() -> void:
 	var upright := bike.upright_transform()
-	var seat := Vector3(0.0, DirtBike.SEAT_HEIGHT, DirtBike.RIDER.z)
-	var frame := Transform3D(upright.basis, upright.origin + bike.ride_transform() * seat - upright * seat)
 	if vr:
-		rig.global_transform = frame * rig_rel
+		var turned := upright.basis * rig_rel.basis
+		var rest := rig_rel * head_rest   # where your head sat on the bike when you got on, in its frame: on its centre line
+		var head := camera.position
+		var moved := Vector3(0.0, head.y - head_rest.y, head.z - head_rest.z)   # (in the bike's own frame, so it goes over with it)
+		rig.global_transform = Transform3D(turned, bike.ride_transform() * (rest + moved) - turned * head)
 	else:
+		var seat := Vector3(0.0, DirtBike.SEAT_HEIGHT, DirtBike.RIDER.z)
+		var frame := Transform3D(upright.basis, upright.origin + bike.ride_transform() * seat - upright * seat)
 		rig.global_transform = Transform3D(frame.basis * Basis(Vector3.UP, look_yaw), frame * (DirtBike.RIDER + Vector3(0.0, FLAT_EYE, 0.0)))
 		camera.position = Vector3.ZERO
 		camera.rotation = Vector3(-FLAT_LOOK_DOWN + look_pitch, 0.0, 0.0)
