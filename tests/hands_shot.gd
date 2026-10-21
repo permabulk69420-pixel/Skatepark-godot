@@ -104,4 +104,30 @@ func run() -> void:
 	await snap("grab_from_above")
 	aim(Vector3(0.9, -0.2, -0.5), Vector3(0, -0.4, -0.7))
 	await snap("grab_from_side")
+	# On foot, the board must turn into the tracked hand instead of fitting the
+	# wrist onto the original deck orientation. Render both carried side grips.
+	grab.release_all()
+	var carry := BoardCarry.new(hands, grab, board)
+	for side in ["right", "left"]:
+		for c in [left, right]:
+			c.floats["grip"] = 0.0
+			c.position = Vector3(-1, 0, 0)
+		hands.update(0.02)
+		carry.update(0.02, board.global_transform, func(_s): return true)
+		var resting := Transform3D(Basis.IDENTITY, Vector3(0, -0.45, -0.6))
+		board.global_transform = resting
+		var state: VrHands.HandState = hands.states[1 if side == "right" else 0]
+		var sign_ := 1.0 if side == "right" else -1.0
+		state.controller.rotation = Vector3.ZERO
+		state.anchor.transform = state.home
+		var contact := resting * grab.shape.side(sign_, 0.0)
+		state.controller.global_position += contact + Vector3(sign_ * 0.05, 0.05, 0) - state.model.socket_global().origin
+		state.controller.floats["grip"] = 1.0
+		for i in 30:
+			hands.update(0.014)
+			board.global_transform = carry.update(0.014, resting, func(_s): return true)
+			carry.place()
+		aim(Vector3(sign_ * 0.8, -0.05, 0.1), contact)
+		await snap("carry_" + side)
+		carry.drop_quietly()
 	quit()

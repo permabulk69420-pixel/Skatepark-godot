@@ -1,0 +1,28 @@
+{
+  "engine": "Godot 4.4.1",
+  "focused_assertions": 629,
+  "suites": [
+    {
+      "suite": "hands_logic",
+      "assertions": 66,
+      "passed": true
+    },
+    {
+      "suite": "board_prop_logic",
+      "assertions": 10,
+      "passed": true
+    },
+    {
+      "suite": "hub_logic",
+      "assertions": 36,
+      "passed": true
+    },
+    {
+      "suite": "board_carry_logic",
+      "assertions": 517,
+      "passed": true
+    }
+  ],
+  "reproduction": "Before the fix, 128 wrist-transform checks failed across 32 combinations of hand, edge and board orientation. After the fix all 517 carry assertions pass.",
+  "visual_validation": "Both carried hands and existing aerial grabs inspected using Godot Compatibility on Mesa llvmpipe. No headset test performed."
+}
