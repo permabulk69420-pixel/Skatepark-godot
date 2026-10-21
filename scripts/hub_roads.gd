@@ -9,7 +9,7 @@ extends RefCounted
 const ASSETS := "res://assets/road/"
 const HEIGHT := HubDriveway.HEIGHT     # flush with the driveway
 const PAINT_HEIGHT := HEIGHT + 0.002
-const TEXTURE_SIZE := 3.0              # metres the asphalt texture covers
+const TEXTURE_SIZE := 2.08             # metres the asphalt texture covers
 const GROUND_EXTENT := 800.0           # the dirt goes this far each way from the house
 
 const MAIN_Y := -24.0                  # the road past the house: its middle line,
