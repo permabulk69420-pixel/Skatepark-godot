@@ -1,11 +1,13 @@
-# What build mode can move about the house and the yard: the half pipe, the couch and the rug that come with the house, and the pieces
-# you can add (the arcade machine, a flat rail). Each piece is one node with everything it needs under it (its look, its COL_ collision
+# What build mode can move about the house and the yard: the half pipe, the couch, the rug and the dirt bike in the drive that come with
+# the house, and the pieces you can add (the arcade machine, a flat rail, more dirt bikes). Each piece is one node with everything it needs under it (its look, its COL_ collision
 # mesh, its grind_path markers), so moving that node moves all of it, and LevelLoader reads it like any other part of the house.
 class_name BuildPieces
 extends RefCounted
 
-const META := "build_piece"            # on each piece's node: {"id", "kind" ("" for the house's own), "name", "colliders", "frame_yaw"}
-const ADDABLE := ["arcade", "rail"]
+const META := "build_piece"            # on each piece's node: {"id", "kind" ("" for the house's own), "name", "colliders", "frame_yaw",
+                                       # and "rideable" for a bike}
+const ADDABLE := ["arcade", "rail", "bike"]
+const DRIVEWAY_BIKE := Vector3(-12.5, 0.004, 4.0)   # the house's own bike stands in the drive, pointing out to the gate
 const ARCADE_SCENE := "res://assets/arcade/arcade_machine.glb"
 const RAIL_LENGTH := 3.0
 const RAIL_HEIGHT := 0.33              # metres from the ground to the top of the bar
@@ -19,6 +21,7 @@ static func caption(kind: String) -> String:
 	match kind:
 		"arcade": return "Arcade machine"
 		"rail": return "Flat rail"
+		"bike": return "Dirt bike"
 	return kind
 
 
@@ -36,6 +39,11 @@ static func mark_house(root: Node3D) -> void:
 	var rug := root.find_child("Interior_Rug", true, false) as Node3D
 	if rug != null:
 		_mark(rug, "rug", "", "Rug", [], -yaw_of(_to_root(rug, root).basis))
+	var bike := make("bike", "bike")
+	bike.name = "DirtBike"
+	bike.transform = Transform3D(Basis(Vector3.UP, PI), DRIVEWAY_BIKE)
+	(bike.get_meta(META) as Dictionary).kind = ""
+	root.add_child(bike)
 
 
 static func _mark(node: Node3D, id: String, kind: String, title: String, colliders: Array, frame_yaw := 0.0) -> void:
@@ -84,7 +92,11 @@ static func make(kind: String, id: String) -> Node3D:
 			colliders.append(collider.name)
 		"rail":
 			_build_rail(piece, id)
+		"bike":
+			piece.add_child(DirtBike.make_model())   # (no collision of its own: it is walked into to get on)
 	_mark(piece, id, kind, caption(kind), colliders)
+	if kind == "bike":
+		(piece.get_meta(META) as Dictionary).rideable = true
 	return piece
 
 

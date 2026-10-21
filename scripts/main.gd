@@ -6,7 +6,7 @@ const CONTROLS_HINT := "W push · S brake · A/D steer & balance · hold Space t
 const REFRESH_RATE := 72.0   # Hz the headset is asked to run at
 const LEVEL_SWITCH_HOLD := 0.8   # seconds the menu button (L on a keyboard) is held to go home (or, at home, to the next level)
 const STEP_OFF_HOLD := 0.6       # seconds the right stick is held down (Q on a keyboard: a tap) to step off the board
-const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps off the board (walk over it to step back on), Space jumps · hold L: next level · M menu: build mode\nHeadset: left stick walks, right stick turns smoothly, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A jumps · squeeze a grip next to the board to pick it up · hold the right stick down to step off the board, walk over it to step on · hold the left menu button for the next level"
+const HUB_HINT := "W A S D walk · drag to look · near the TV: E picks up the remote, left / right change the level, Enter plays · Q steps off the board (walk over it to step back on), Space jumps · hold L: next level · M menu: build mode · walk up to the dirt bike to get on it: W throttle, S brake, A / D steer, Q off\nHeadset: left stick walks, right stick turns smoothly, squeeze a grip by the remote, stick left / right changes the level, trigger plays · right A jumps · squeeze a grip next to the board to pick it up · hold the right stick down to step off the board, walk over it to step on · walk up to the dirt bike to get on: squeeze the grips, twist the right one back for throttle, right trigger brakes, turn the bars to steer, hold the right stick down to get off · hold the left menu button for the next level"
 
 var level_id := ""               # a test can set it before the scene is added; `-- level=<id>` on the command line does too; empty: the house
 var info: Dictionary
@@ -48,6 +48,10 @@ var held_level_switch := 0.0
 var switching := false
 var hub: Hub                     # the house (null in every other level)
 var build: BuildMode             # moving things about the house (null in every other level)
+var ride: BikeRide               # riding a dirt bike (null when not)
+var bike_sound: BikeSound
+var bike_armed := true           # walking up to a bike gets you on, but only once you have been away from one since you got off
+var bike_apart := 0.0
 var foot: FootMode
 var on_foot := false
 var flat_remote_held := false
@@ -188,6 +192,9 @@ func _ready() -> void:
 		if hub.tv != null:
 			hub.tv.chosen.connect(_go_to)
 		build = BuildMode.new(level, get_world_3d().direct_space_state, self, vr)
+		bike_sound = BikeSound.new()
+		bike_sound.name = "BikeSound"
+		add_child(bike_sound)
 		var back := BuildMode.take_come_back()   # (the house was loaded again by build mode: you stay where you were)
 		if back.is_empty():
 			_stand_up(level.spawn_pos, level.spawn_heading)
@@ -231,6 +238,8 @@ func _process(delta: float) -> void:
 	if not ready_to_play or switching:
 		return
 	var dt := minf(delta, 0.05)
+	if bike_sound != null:
+		bike_sound.update(dt, ride.bike if ride != null else null)
 	# Hold the left menu button (L on a keyboard) to go home; at home, on to the next level.
 	var level_key := Input.is_key_pressed(KEY_L) or (vr and left_controller.is_button_pressed("menu_button"))
 	held_level_switch = held_level_switch + dt if level_key else 0.0
@@ -244,6 +253,9 @@ func _process(delta: float) -> void:
 		return
 	if build != null and build.active:
 		_process_build(dt)
+		return
+	if ride != null:
+		_process_bike(dt)
 		return
 	if on_foot:
 		_process_foot(dt)
@@ -453,7 +465,7 @@ func _on_menu_chosen(action: String) -> void:
 			_start_building()
 		"build_resume":
 			_set_menu(false)
-		"add_arcade", "add_rail":
+		"add_arcade", "add_rail", "add_bike":
 			_set_menu(false)
 			var facing := foot.facing()
 			build.add(action.substr(4), foot.body() + Vector3(-sin(facing), 0.0, -cos(facing)) * 1.5, facing)
@@ -469,6 +481,8 @@ func _on_menu_chosen(action: String) -> void:
 
 # Into build mode (from the house's menu): on foot, the menu turned to the build page.
 func _start_building() -> void:
+	if ride != null:
+		_get_off_bike()
 	if not on_foot:
 		_stand_up(sim.pos, sim.heading, Transform3D(Basis(sim.board_quaternion(false)), sim.pos), sim.vel, true)
 	build.start()
@@ -477,6 +491,8 @@ func _start_building() -> void:
 
 # Build mode is over (or starts again from the house as it was): the house is loaded again with you standing where you are.
 func _reload_house(keep_building: bool) -> void:
+	if ride != null:
+		_get_off_bike()
 	BuildMode.come_back = {"pos": foot.body(), "yaw": foot.facing(), "building": keep_building}
 	_go_to(Levels.HUB)
 
@@ -528,7 +544,9 @@ func _process_build(dt: float) -> void:
 
 
 func _turn_view(dx: float, dy: float) -> void:
-	if on_foot:
+	if ride != null:
+		ride.turn_view(dx, dy)
+	elif on_foot:
 		foot.turn_view(dx, dy)
 	else:
 		rig_control.turn_view(dx, dy)
@@ -721,6 +739,92 @@ func _process_foot(dt: float) -> void:
 	hud.update(dt)
 	if on_foot:
 		_walk_over_board(dt)
+	if on_foot:
+		_walk_to_bike(dt)
+
+
+# Walking up to a bike (on foot, not carrying the board) gets you on it.
+func _walk_to_bike(dt: float) -> void:
+	if build == null or carry.holding() or foot.air or not foot.placed:
+		return
+	var near: Node3D = null
+	for piece in build.pieces:
+		if BuildPieces.info(piece).get("rideable", false) and BikeRide.reaches(piece, foot.body()):
+			near = piece
+	if near == null:
+		bike_apart += dt
+		if bike_apart > 0.3:
+			bike_armed = true
+		return
+	bike_apart = 0.0
+	if bike_armed:
+		_get_on_bike(near)
+
+
+func _get_on_bike(piece: Node3D) -> void:
+	ride = BikeRide.new(DirtBike.new(piece, world, info.bounds), rig, camera, hands, vr)
+	on_foot = false
+	flat_remote_held = false
+	held_step_off = 0.0
+	step_key_was = Input.is_key_pressed(KEY_Q)
+	bike_sound.start()
+	hud.say("On the bike · W throttle · S brake · A / D steer · Q gets off" if not vr else "On the bike", 3.0)
+	if haptics:
+		haptics.pulse(0.5, 60)
+
+
+func _get_off_bike() -> void:
+	var spot := ride.end()
+	ride = null
+	bike_sound.stop()
+	bike_armed = false
+	bike_apart = 0.0
+	foot.place(spot.pos, spot.yaw)
+	on_foot = true
+	jump_was = true
+	hud.speed_label.visible = false
+
+
+# Riding: the bike under you, your hands on its bars (headset), and getting off (as stepping off the board: the right stick held down,
+# Q on a flat screen) once it has all but stopped.
+func _process_bike(dt: float) -> void:
+	var brake := 0.0
+	var paddle := 0.0
+	var throttle := 0.0
+	var steer := 0.0
+	if vr:
+		brake = right_controller.get_float("trigger")
+		paddle = left_controller.get_vector2("primary").y
+	else:
+		throttle = float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
+		brake = float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN))
+		steer = float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)) - float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT))
+		if brake > 0.0 and absf(ride.bike.speed) < 0.3:
+			paddle = -1.0   # (stopped, S walks it back)
+			brake = 0.0
+	var happened := ride.update(dt, brake, paddle, throttle, steer)
+	hands.update(dt)
+	ride.place_hands()
+	if happened == "land" or happened == "hit":
+		bike_sound.knock(ride.bike.last_impact)
+		if haptics:
+			haptics.pulse(clampf(ride.bike.last_impact / 8.0, 0.2, 1.0), 70)
+	elif happened == "shift" and haptics:
+		haptics.pulse(0.25, 20, "right")
+	if haptics and ride.holding("right"):
+		haptics.rumble(0.04 + 0.12 * ride.bike.throttle, "right", 60.0)   # (the engine, through the bars)
+	level.lods.update(camera.global_position)
+	sfx.hush(dt)
+	hud.update(dt)
+	hud.speed_label.visible = true
+	hud.speed_label.text = "%d km/h · gear %d" % [roundi(absf(ride.bike.speed) * 3.6), ride.bike.gear + 1]
+	var tapped := Input.is_key_pressed(KEY_Q) and not step_key_was
+	step_key_was = Input.is_key_pressed(KEY_Q)
+	var held := vr and right_controller.is_button_pressed("primary_click")
+	held_step_off = held_step_off + dt if held else 0.0
+	if (tapped or held_step_off > STEP_OFF_HOLD) and absf(ride.bike.speed) < 2.0 and not ride.bike.air:
+		held_step_off = -1e9
+		_get_off_bike()
 
 
 # The board while you are on foot: lying about (its physics), or in your hand (it follows the hand).

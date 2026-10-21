@@ -80,7 +80,7 @@ func run() -> void:
 	for p in build.pieces:
 		ids.append(BuildPieces.info(p).id)
 	ids.sort()
-	check(ids == ["couch", "halfpipe", "rug"], "the half pipe, the couch and the rug can be moved (%s)" % [ids])
+	check(ids == ["bike", "couch", "halfpipe", "rug"], "the half pipe, the couch, the rug and the bike in the drive can be moved (%s)" % [ids])
 	var couch := piece("couch")
 	var couch_from: Vector3 = couch.global_position
 	check(collider_at(couch_from.x, couch_from.z) == "COL_Couch", "the couch has its own collision, cut out of the walls (%s)" % collider_at(couch_from.x, couch_from.z))
@@ -158,14 +158,14 @@ func run() -> void:
 	main._on_menu_chosen("add_rail")
 	var spare: Node3D = build.held
 	point(0.0, -12.0)
-	check(point(0.0, -12.0, false, 0.0, true) == "removed" and build.pieces.size() == 5 and not spare in build.pieces, "B removes a piece that was added")
+	check(point(0.0, -12.0, false, 0.0, true) == "removed" and build.pieces.size() == 6 and not spare in build.pieces, "B removes a piece that was added")
 	check(BuildPieces.info(arcade).id == "arcade_1" and BuildPieces.info(rail).id == "rail_1", "added pieces have their own names")
 
 	# done: saved, and the house loaded again
 	var couch_to: Vector3 = couch.global_position
 	var couch_basis: Basis = couch.global_basis
 	HubLayout.write(build.layout())
-	check(HubLayout.read().size() == 5, "the layout is saved: three pieces of the house and two added")
+	check(HubLayout.read().size() == 6, "the layout is saved: four pieces of the house and two added")
 	BuildMode.come_back = {"pos": Vector3(3.5, 0.3, 3.0), "yaw": -PI / 2.0, "building": false}
 	main.queue_free()
 	await process_frame

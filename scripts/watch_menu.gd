@@ -23,8 +23,8 @@ const TEXT := Color("e9eef0")
 const TEXT_DIM := Color("7f9298")
 const ROW_HEIGHT := 56
 const FONT := 32
-const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "build_done", "build_cancel", "build_reset"]
-const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove an added piece\nFlat screen: E, the arrow keys, Shift, X"
+const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "build_done", "build_cancel", "build_reset"]
+const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove one you added"
 
 var is_open := false
 var root: Node3D
@@ -84,6 +84,7 @@ static func caption_for(action: String) -> String:
 		"build_resume": return "Keep building"
 		"add_arcade": return "Add an arcade machine"
 		"add_rail": return "Add a flat rail"
+		"add_bike": return "Add a dirt bike"
 		"build_done": return "Done: save it"
 		"build_cancel": return "Cancel: undo the changes"
 		"build_reset": return "Put everything back"
@@ -211,7 +212,7 @@ func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 		var hint := Label.new()
 		hint.text = BUILD_HINT
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hint.add_theme_font_size_override("font_size", 20)
+		hint.add_theme_font_size_override("font_size", 18)
 		hint.add_theme_color_override("font_color", TEXT_DIM)
 		build_page.add_child(hint)
 	return panel
