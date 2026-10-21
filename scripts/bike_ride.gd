@@ -14,7 +14,8 @@ const GRIP_REACH := 0.16           # a hand this close to a grip takes it when i
 const SQUEEZE_ON := 0.6
 const SQUEEZE_OFF := 0.35
 const TWIST_DEAD := deg_to_rad(4.0)     # twisting the right grip back: nothing for this much,
-const TWIST_FULL := deg_to_rad(50.0)    # full throttle at this much
+const TWIST_FULL := deg_to_rad(65.0)    # full throttle at this much,
+const TWIST_CURVE := 1.6                # building up as this power of the way between (a little twist, a little throttle)
 const STEP_OFF_SIDE := 0.75        # getting off puts you this far to the left of the bike
 const FLAT_EYE := 1.55             # a flat screen: the eye above the ground,
 const FLAT_LOOK_DOWN := 0.18       # looking a little down the road
@@ -53,7 +54,7 @@ func _init(p_bike: DirtBike, p_rig: Node3D, p_camera: Camera3D, p_hands: VrHands
 		var target := bike.rider_point()
 		var basis := Basis(Vector3.UP, bike.yaw - head_yaw)
 		var xf := Transform3D(basis, Vector3(target.x, target.y + DirtBike.PEG_HEIGHT, target.z) - basis * Vector3(head_local.x, 0.0, head_local.z))
-		rig_rel = bike.level_transform().affine_inverse() * xf
+		rig_rel = bike.ride_transform().affine_inverse() * xf
 	_follow()
 
 
@@ -66,7 +67,7 @@ func update(dt: float, brake: float, paddle: float, flat_throttle := 0.0, flat_s
 		_update_grips()
 		controls.throttle = throttle_for(twist) if grips.has("right") else 0.0
 		controls.steer = 0.0
-		controls.steer_to = bar_angle() if grips.has("left") and grips.has("right") else NAN
+		controls.steer_to = DirtBike.hand_steer(bar_angle(), bike.speed) if grips.has("left") and grips.has("right") else NAN
 	else:
 		controls.throttle = flat_throttle
 		controls.steer = flat_steer
@@ -78,15 +79,15 @@ func update(dt: float, brake: float, paddle: float, flat_throttle := 0.0, flat_s
 
 # Throttle from how far the right grip is twisted back.
 static func throttle_for(angle: float) -> float:
-	return clampf((angle - TWIST_DEAD) / (TWIST_FULL - TWIST_DEAD), 0.0, 1.0)
+	return pow(clampf((angle - TWIST_DEAD) / (TWIST_FULL - TWIST_DEAD), 0.0, 1.0), TWIST_CURVE)
 
 
-# The angle the rider's hands put the bars at: the line from the left hand to the right, turned about the vertical in the bike's frame
-# (the right hand forward is a left turn).
+# The angle the rider's hands hold the bars at: the line from the left hand to the right, turned about the vertical in the frame the rider
+# rides in (the right hand forward is a left turn).
 func bar_angle() -> float:
 	var left := (grips.left.state as VrHands.HandState).controller.global_position
 	var right := (grips.right.state as VrHands.HandState).controller.global_position
-	return bar_angle_of(bike.level_transform().basis.inverse() * (right - left))
+	return bar_angle_of(bike.ride_transform().basis.inverse() * (right - left))
 
 
 static func bar_angle_of(bar: Vector3) -> float:
@@ -104,8 +105,8 @@ static func twist_about_bar(from: Quaternion, now: Quaternion) -> float:
 
 # Each hand takes a grip when it squeezes near one, and lets go when it stops squeezing.
 func _update_grips() -> void:
-	# (measured in the bike's level frame: the headset does not tip with the bike, so its pitching up a ramp is not a twist)
-	var frame := Quaternion(Vector3.UP, bike.yaw).inverse()
+	# (measured in the frame the rider rides in, which pitches with the bike: its pitching up a ramp is not a twist)
+	var frame := bike.ride_transform().basis.get_rotation_quaternion().inverse()
 	for state in hands.states:
 		var side := state.handedness
 		var held: bool = grips.has(side)
@@ -145,14 +146,14 @@ func end() -> Dictionary:
 	return {"pos": level * Vector3(-STEP_OFF_SIDE, 0.0, 0.1), "yaw": bike.yaw}
 
 
-# The rig rides along: in the headset it keeps where it was on the bike (turned with it, not tipped with it); on a flat screen the eye
-# is over the pegs looking down the road.
+# The rig rides on the bike: it keeps where it was on it, turned and pitched with it (but not rolled with its lean). On a flat screen the
+# eye is over the pegs, looking down the road.
 func _follow() -> void:
+	var frame := bike.ride_transform()
 	if vr:
-		rig.global_transform = bike.level_transform() * rig_rel
+		rig.global_transform = frame * rig_rel
 	else:
-		var level := bike.level_transform()
-		rig.global_transform = Transform3D(Basis(Vector3.UP, bike.yaw + look_yaw), level * DirtBike.RIDER + Vector3(0.0, FLAT_EYE, 0.0))
+		rig.global_transform = Transform3D(frame.basis * Basis(Vector3.UP, look_yaw), frame * (DirtBike.RIDER + Vector3(0.0, FLAT_EYE, 0.0)))
 		camera.position = Vector3.ZERO
 		camera.rotation = Vector3(-FLAT_LOOK_DOWN + look_pitch, 0.0, 0.0)
 

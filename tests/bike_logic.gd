@@ -103,7 +103,15 @@ func run() -> void:
 	var yaw_before := bike.yaw
 	ride(1.0, 0.4, 0.0, 1.0)
 	check(angle_difference(yaw_before, bike.yaw) > 0.2, "A steers it left (%.2f rad)" % angle_difference(yaw_before, bike.yaw))
-	check(bike.lean > 0.05, "it leans into the turn (%.2f)" % bike.lean)
+	check(bike.lean > 0.05 and bike.lean <= DirtBike.MAX_LEAN + 1e-4, "it leans into the turn, gently (%.1f degrees)" % rad_to_deg(bike.lean))
+	var grip_in_ride: Vector3 = bike.ride_transform().affine_inverse() * bike.grip_markers.right.global_position
+	var was_lean := bike.lean
+	bike.lean = 0.0
+	bike.apply()
+	var grip_upright: Vector3 = bike.ride_transform().affine_inverse() * bike.grip_markers.right.global_position
+	bike.lean = was_lean
+	bike.apply()
+	check(grip_in_ride.distance_to(grip_upright) < 0.1, "at full lean the bars move only a few centimetres from where the rider's hands are (%.3f m)" % grip_in_ride.distance_to(grip_upright))
 	var fork_ahead: Vector3 = bike.node.global_basis.inverse() * bike.pivot.global_basis.z   # (the model's +Z: the bike's forward)
 	check(fork_ahead.x < -0.1, "the front wheel turns left with it (%.3f)" % fork_ahead.x)
 	var spin := bike.spin_rear
@@ -131,6 +139,8 @@ func run() -> void:
 	put(bike, Vector3(0.0, 0.0, z0 + 25.0), 0.0)
 	var flew := false
 	var peak := 0.0
+	var pitched_view := 0.0   # (the most the view was pitched, with the bike, on the ramp)
+	var view_off := 0.0
 	events = []
 	t = 0.0
 	while t < 6.0:
@@ -139,9 +149,15 @@ func run() -> void:
 			events.append(e)
 		flew = flew or bike.air
 		peak = maxf(peak, bike.pos.y)
+		var ride_frame := bike.ride_transform()
+		view_off = maxf(view_off, main.rig.global_position.distance_to(ride_frame * (DirtBike.RIDER + Vector3(0, BikeRide.FLAT_EYE, 0))))
+		if not bike.air and bike.pitch > 0.1:
+			pitched_view = maxf(pitched_view, asin(clampf(-main.rig.global_basis.z.y, -1.0, 1.0)))
 		t += DT
 	check(flew and peak > 1.4, "off a kicker it flies (up to %.2f m)" % peak)
 	check("land" in events and not bike.air and absf(bike.pos.y) < 0.05, "and lands again")
+	check(view_off < 0.01, "the view stays on the bike the whole way (%.3f m off at most)" % view_off)
+	check(pitched_view > 0.1, "and pitches up the ramp with it (%.1f degrees)" % rad_to_deg(pitched_view))
 	ramp.queue_free()
 
 	# getting off
@@ -161,6 +177,9 @@ func run() -> void:
 	check(absf(BikeRide.twist_about_bar(Quaternion.IDENTITY, Quaternion(Vector3.RIGHT, 0.5)) - 0.5) < 1e-4, "a twist about the bar is measured")
 	check(absf(BikeRide.twist_about_bar(Quaternion.IDENTITY, Quaternion(Vector3.UP, 0.4))) < 1e-4, "turning the bars is not a twist")
 	check(BikeRide.bar_angle_of(Vector3(0.7, 0.0, -0.15)) > 0.1, "the right hand forward of the left turns the bars left")
+	check(DirtBike.hand_steer(deg_to_rad(1.0), 0.0) == 0.0, "the hands a degree off straight steer straight")
+	check(absf(DirtBike.hand_steer(deg_to_rad(5.0), 10.0)) < deg_to_rad(1.0), "at speed a small turn of the hands is a very small turn of the wheel (%.2f degrees)" % rad_to_deg(DirtBike.hand_steer(deg_to_rad(5.0), 10.0)))
+	check(absf(DirtBike.hand_steer(DirtBike.STEER_LIMIT, 0.0) - DirtBike.STEER_LIMIT) < 1e-4, "at a walk the hands can turn it to full lock")
 	var left := FakeController.new()
 	var right := FakeController.new()
 	main.add_child(left)
@@ -192,7 +211,7 @@ func run() -> void:
 	var level_basis := Basis(Vector3.UP, bike.yaw)
 	right.global_basis = Basis(level_basis * Vector3.RIGHT, deg_to_rad(40.0)) * right.global_basis   # (back: the top of the grip towards you)
 	vr_ride.update(DT, 0.0, 0.0)
-	check(vr_ride.controls.throttle > 0.6, "twisting the right grip back opens the throttle (%.2f)" % vr_ride.controls.throttle)
+	check(vr_ride.controls.throttle > 0.3 and vr_ride.controls.throttle < 0.6, "twisting the right grip back 40 degrees opens the throttle part way (%.2f)" % vr_ride.controls.throttle)
 	right.global_position += level_basis * Vector3(0.0, 0.0, -0.15)
 	left.global_position += level_basis * Vector3(0.0, 0.0, 0.15)
 	vr_ride.update(DT, 0.0, 0.0)

@@ -17,9 +17,12 @@ const REAR_RADIUS := 0.338
 const PEG_HEIGHT := 0.413          # the footpegs above the ground
 const RIDER := Vector3(0.0, 0.0, 0.12)   # where the rider's head is over, in the bike's frame (just behind the middle)
 const STEER_LIMIT := deg_to_rad(35.0)    # (the model's own suggestion) at a walk,
-const STEER_LIMIT_FAST := deg_to_rad(7.0)   # narrowing to this at speed
-const STEER_RATE := 3.0            # rad/s the bars turn at with a key or stick
-const HAND_STEER_RATE := 10.0      # and following the rider's hands
+const STEER_LIMIT_FAST := deg_to_rad(5.0)   # narrowing to this at speed
+const STEER_NARROWS := 14.0        # (m/s by which it has narrowed all the way)
+const STEER_RATE := 3.0            # rad/s the bars turn at with a key or stick at a walk (less at speed),
+const HAND_STEER_RATE := 6.0       # and following the rider's hands
+const HAND_DEAD := deg_to_rad(1.5) # the rider's hands: this much either side of straight is straight,
+const HAND_CURVE := 1.5            # and the turn grows as this power of how far they turn (small moves, small turns)
 const GEAR_TOPS := [9.0, 14.0, 19.0, 24.0, 29.0]   # m/s at the red line in each gear
 const GEAR_PULL := [6.5, 5.2, 4.1, 3.2, 2.5]        # m/s² of push at full throttle in each
 const IDLE := 1600.0
@@ -36,7 +39,9 @@ const WALL_PROBES := [0.3, 0.75]   # heights above the ground the bike feels wal
 const FRONT_REACH := 0.95          # from the middle to the front of the front tyre
 const LIFT_PROBE := 0.7            # the ground is looked for from this far above the bike
 const AIR_PITCH := 0.7             # rad/s the throttle (nose up) or the brake (nose down) turns it in the air
-const MAX_LEAN := 0.75
+const LEAN_SHARE := 0.4            # the bike leans this much of what a real one would in a turn,
+const MAX_LEAN := deg_to_rad(11.0) # never more than this,
+const LEAN_PIVOT := 1.0            # about a line this high (the seat), so the bars stay where the rider's hands are
 
 class Controls:
 	var throttle := 0.0            # 0..1
@@ -115,9 +120,14 @@ func forward() -> Vector3:
 	return Vector3(-sin(yaw), 0.0, -cos(yaw))
 
 
-# The bike's frame turned only about the vertical (for the rider's view and hands).
+# The bike's frame turned only about the vertical.
 func level_transform() -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, yaw), pos)
+
+
+# The frame the rider rides in: turned and pitched with the bike, but not leaned (the view never rolls the horizon).
+func ride_transform() -> Transform3D:
+	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos)
 
 
 # Where the rider's head goes over (on the ground).
@@ -126,17 +136,29 @@ func rider_point() -> Vector3:
 
 
 func steer_limit() -> float:
-	return lerpf(STEER_LIMIT, STEER_LIMIT_FAST, clampf(absf(speed) / 12.0, 0.0, 1.0))
+	return steer_limit_at(speed)
+
+
+static func steer_limit_at(at_speed: float) -> float:
+	return lerpf(STEER_LIMIT, STEER_LIMIT_FAST, clampf(absf(at_speed) / STEER_NARROWS, 0.0, 1.0))
+
+
+# The front wheel's angle for the angle the rider's hands hold the bars at: nothing near straight, then growing gently, and at speed a
+# full turn of the hands is only the narrowed lock.
+static func hand_steer(bar: float, at_speed: float) -> float:
+	var x := clampf((absf(bar) - HAND_DEAD) / (STEER_LIMIT - HAND_DEAD), 0.0, 1.0)
+	return signf(bar) * pow(x, HAND_CURVE) * steer_limit_at(at_speed)
 
 
 # One step. Returns what happened: "" or "land" / "hit" (how hard: `last_impact`, m/s) / "shift".
 func update(c: Controls, dt: float) -> String:
 	var happened := ""
-	throttle = move_toward(throttle, clampf(c.throttle, 0.0, 1.0), dt * 6.0)
+	throttle = move_toward(throttle, clampf(c.throttle, 0.0, 1.0), dt * 4.0)
 	# the bars
 	var limit := steer_limit()
 	if is_nan(c.steer_to):
-		steer = move_toward(steer, clampf(c.steer, -1.0, 1.0) * limit, dt * STEER_RATE)
+		var rate := STEER_RATE * lerpf(1.0, 0.35, clampf(absf(speed) / STEER_NARROWS, 0.0, 1.0))
+		steer = move_toward(steer, clampf(c.steer, -1.0, 1.0) * limit, dt * rate)
 	else:
 		steer = move_toward(steer, clampf(c.steer_to, -limit, limit), dt * HAND_STEER_RATE)
 	# the engine and the box
@@ -204,7 +226,7 @@ func update(c: Controls, dt: float) -> String:
 	if air:
 		vy -= GRAVITY * dt
 		next.y = pos.y + vy * dt
-		pitch = clampf(pitch + (throttle - clampf(c.brake, 0.0, 1.0)) * AIR_PITCH * dt, -0.9, 0.9)
+		pitch = clampf(pitch + (throttle - clampf(c.brake, 0.0, 1.0)) * AIR_PITCH * dt, -0.6, 0.6)
 		var ground_here = _ground_y(next, maxf(pos.y, next.y) + LIFT_PROBE)
 		if ground_here != null and next.y <= ground_here and vy <= 0.0:
 			last_impact = -vy
@@ -215,8 +237,8 @@ func update(c: Controls, dt: float) -> String:
 			happened = "land"
 	pos = next
 	# how it looks
-	var lean_to := 0.0 if air else clampf(atan(speed * speed * tan(steer) / WHEELBASE / GRAVITY), -MAX_LEAN, MAX_LEAN)
-	lean = lerpf(lean, lean_to, 1.0 - exp(-dt * 6.0))
+	var lean_to := 0.0 if air else clampf(atan(speed * speed * tan(steer) / WHEELBASE / GRAVITY) * LEAN_SHARE, -MAX_LEAN, MAX_LEAN)
+	lean = lerpf(lean, lean_to, 1.0 - exp(-dt * 3.0))
 	spin_front = wrapf(spin_front + speed / FRONT_RADIUS * dt, -PI, PI)   # (about the wheel's X: its top goes forward)
 	spin_rear = wrapf(spin_rear + speed / REAR_RADIUS * dt, -PI, PI)
 	apply()
@@ -225,7 +247,8 @@ func update(c: Controls, dt: float) -> String:
 
 # Puts the bike where it is: its pose, the front end turned, the wheels round.
 func apply() -> void:
-	node.global_transform = Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch) * Basis(Vector3.BACK, lean), pos)
+	var pivot_up := Transform3D(Basis.IDENTITY, Vector3(0.0, LEAN_PIVOT, 0.0))
+	node.global_transform = ride_transform() * pivot_up * Transform3D(Basis(Vector3.BACK, lean), Vector3.ZERO) * pivot_up.affine_inverse()
 	pivot.transform = Transform3D(pivot_rest.basis * Basis(Vector3.UP, steer), pivot_rest.origin)
 	front_wheel.transform = front_rest * Transform3D(Basis(Vector3.RIGHT, spin_front), Vector3.ZERO)
 	rear_wheel.transform = rear_rest * Transform3D(Basis(Vector3.RIGHT, spin_rear), Vector3.ZERO)
