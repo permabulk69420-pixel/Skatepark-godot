@@ -111,7 +111,9 @@ func run() -> void:
 	var grip_upright: Vector3 = bike.ride_transform().affine_inverse() * bike.grip_markers.right.global_position
 	bike.lean = was_lean
 	bike.apply()
-	check(grip_in_ride.distance_to(grip_upright) < 0.1, "at full lean the bars move only a few centimetres from where the rider's hands are (%.3f m)" % grip_in_ride.distance_to(grip_upright))
+	check(grip_in_ride.distance_to(grip_upright) < 0.005, "you lean with it: the bars stay just where your hands are (%.3f m)" % grip_in_ride.distance_to(grip_upright))
+	main.ride.update(DT, 0.0, 0.0, 0.4, 1.0)
+	check(main.rig.global_basis.x.distance_to(bike.node.global_basis.x) < 0.001 and absf(main.rig.global_basis.x.y) > 0.05, "and the view leans with it, as it tilts with the board")
 	var fork_ahead: Vector3 = bike.node.global_basis.inverse() * bike.pivot.global_basis.z   # (the model's +Z: the bike's forward)
 	check(fork_ahead.x < -0.1, "the front wheel turns left with it (%.3f)" % fork_ahead.x)
 	var spin := bike.spin_rear

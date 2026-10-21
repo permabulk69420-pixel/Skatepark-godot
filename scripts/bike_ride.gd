@@ -1,5 +1,5 @@
 # Riding a dirt bike: you, the bike, and your hands on its bars. Walk up to a bike to get on (it is the same as stepping on the board); in
-# the headset you stand on its pegs, and you follow it wherever it goes.
+# the headset you stand on its pegs, bolted to it as you are to the board: you turn, pitch and lean with it.
 #   The headset: squeeze a grip with a hand on a handlebar grip to hold it. Twist the right grip back for throttle, as on a real bike; the
 #   right trigger is the brake. With both hands on, the bars turn the way you turn them. Let go with both and it shuts off and coasts.
 #   Nearly stopped, the left stick walks it forwards or back.
@@ -105,7 +105,7 @@ static func twist_about_bar(from: Quaternion, now: Quaternion) -> float:
 
 # Each hand takes a grip when it squeezes near one, and lets go when it stops squeezing.
 func _update_grips() -> void:
-	# (measured in the frame the rider rides in, which pitches with the bike: its pitching up a ramp is not a twist)
+	# (measured in the frame the rider rides in, which moves with the bike: its pitching up a ramp or leaning is not a twist)
 	var frame := bike.ride_transform().basis.get_rotation_quaternion().inverse()
 	for state in hands.states:
 		var side := state.handedness
@@ -146,8 +146,8 @@ func end() -> Dictionary:
 	return {"pos": level * Vector3(-STEP_OFF_SIDE, 0.0, 0.1), "yaw": bike.yaw}
 
 
-# The rig rides on the bike: it keeps where it was on it, turned and pitched with it (but not rolled with its lean). On a flat screen the
-# eye is over the pegs, looking down the road.
+# The rig is bolted to the bike: it keeps where it was on it, turning, pitching and leaning with it. On a flat screen the eye is over the
+# pegs, looking down the road.
 func _follow() -> void:
 	var frame := bike.ride_transform()
 	if vr:

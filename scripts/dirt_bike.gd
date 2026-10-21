@@ -41,7 +41,7 @@ const LIFT_PROBE := 0.7            # the ground is looked for from this far abov
 const AIR_PITCH := 0.7             # rad/s the throttle (nose up) or the brake (nose down) turns it in the air
 const LEAN_SHARE := 0.4            # the bike leans this much of what a real one would in a turn,
 const MAX_LEAN := deg_to_rad(11.0) # never more than this,
-const LEAN_PIVOT := 1.0            # about a line this high (the seat), so the bars stay where the rider's hands are
+const LEAN_PIVOT := 1.0            # about a line this high (the seat): the rider leans with it, about about their middle
 
 class Controls:
 	var throttle := 0.0            # 0..1
@@ -125,9 +125,11 @@ func level_transform() -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, yaw), pos)
 
 
-# The frame the rider rides in: turned and pitched with the bike, but not leaned (the view never rolls the horizon).
+# The frame the rider rides in: the bike's own, every way it turns, pitches and leans (as the board carries the skater).
 func ride_transform() -> Transform3D:
-	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos)
+	var pivot_up := Transform3D(Basis.IDENTITY, Vector3(0.0, LEAN_PIVOT, 0.0))
+	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos) * pivot_up * Transform3D(Basis(Vector3.BACK, lean), Vector3.ZERO) \
+		* pivot_up.affine_inverse()
 
 
 # Where the rider's head goes over (on the ground).
@@ -247,8 +249,7 @@ func update(c: Controls, dt: float) -> String:
 
 # Puts the bike where it is: its pose, the front end turned, the wheels round.
 func apply() -> void:
-	var pivot_up := Transform3D(Basis.IDENTITY, Vector3(0.0, LEAN_PIVOT, 0.0))
-	node.global_transform = ride_transform() * pivot_up * Transform3D(Basis(Vector3.BACK, lean), Vector3.ZERO) * pivot_up.affine_inverse()
+	node.global_transform = ride_transform()
 	pivot.transform = Transform3D(pivot_rest.basis * Basis(Vector3.UP, steer), pivot_rest.origin)
 	front_wheel.transform = front_rest * Transform3D(Basis(Vector3.RIGHT, spin_front), Vector3.ZERO)
 	rear_wheel.transform = rear_rest * Transform3D(Basis(Vector3.RIGHT, spin_rear), Vector3.ZERO)
