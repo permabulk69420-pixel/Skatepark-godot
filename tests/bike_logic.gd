@@ -287,10 +287,11 @@ func run() -> void:
 	check(vr_ride.controls.steer_to > 0.2, "pushing the right hand forward and pulling the left back turns the bars left (%.2f)" % vr_ride.controls.steer_to)
 	fake_camera.position.x -= 0.2
 	vr_ride.update(DT, 0.0, 0.0)
-	check(absf(vr_ride.controls.lean - deg_to_rad(17.9)) < deg_to_rad(0.5), "leaning your head 20 cm left leans it about 18 degrees left (%.1f)" % rad_to_deg(vr_ride.controls.lean))
+	var up := BikeRide.SEATED_EYE - DirtBike.LEAN_PIVOT
+	check(absf(vr_ride.controls.lean - atan2(0.2, up)) < 0.002, "your head 20 cm left of the bike's centre line leans it left one for one (%.1f degrees)" % rad_to_deg(vr_ride.controls.lean))
 	fake_camera.position.x -= 0.2
 	vr_ride.update(DT, 0.0, 0.0)
-	check(absf(vr_ride.controls.lean - deg_to_rad(38.9)) < deg_to_rad(0.5), "and 40 cm, about 39: it follows you as far as you lean (%.1f)" % rad_to_deg(vr_ride.controls.lean))
+	check(absf(vr_ride.controls.lean - atan2(0.4, up)) < 0.002, "and 40 cm, one for one (%.1f degrees)" % rad_to_deg(vr_ride.controls.lean))
 	fake_camera.position.x += 0.2
 	fake_camera.position.x += 0.2
 	vr_ride.update(DT, 0.0, 0.0)

@@ -17,9 +17,6 @@ const SQUEEZE_ON := 0.6
 const SQUEEZE_OFF := 0.35
 const TWIST_DEAD := deg_to_rad(4.0)     # twisting the right grip back: nothing for this much,
 const TWIST_FULL := deg_to_rad(50.0)    # full throttle at this much
-const BODY_DEAD := 0.03            # metres your head can be off the middle of the bike, side to side, without leaning it,
-const LEAN_PER_METRE := deg_to_rad(20.0) / 0.19   # and past that the bike leans this much more for every metre more you lean (about a
-                                   # degree a centimetre), as far as you lean, until it would touch the ground
 const STEP_OFF_SIDE := 0.75        # getting off puts you this far to the left of the bike
 const SEATED_EYE := 1.65           # the headset: the eyes this high above the ground, as sitting on the seat (whatever your own height, and
                                    # whether you stand or sit for real)
@@ -87,11 +84,12 @@ func update(dt: float, brake: float, paddle: float, flat_throttle := 0.0, flat_s
 	return happened
 
 
-# How far the rider leans the bike (radians, left +): from the head's way off the middle of the bike, side to side, with no end to it but
-# the ground. (The view is bolted to the bike, so the bike leaning with you does not move your head in its frame: leaning is only ever you.)
+# How far the rider leans the bike (radians, left +), one for one: the angle the line from the bike's centre line (where it leans about,
+# on its tyres) up to the headset makes with the bike's upright. (The view is bolted to the bike, so the bike leaning with you does not
+# move your head in its frame: leaning is only ever you.)
 func body_lean() -> float:
-	var off := -(bike.ride_transform().affine_inverse() * camera.global_position).x
-	return signf(off) * maxf(absf(off) - BODY_DEAD, 0.0) * LEAN_PER_METRE
+	var head := bike.ride_transform().affine_inverse() * camera.global_position
+	return atan2(-head.x, maxf(head.y - DirtBike.LEAN_PIVOT, 0.1))
 
 
 # Throttle from how far the right grip is twisted back.
