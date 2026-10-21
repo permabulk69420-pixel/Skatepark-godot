@@ -171,6 +171,8 @@ var lip_exit := false
 var air_floor_y := 0.0
 var air_floor_normal := Vector3.UP
 var air_floor_found := false
+var air_gap := -1.0                # how far above that surface the board was a step ago (-1: no surface, or the air has only just begun)
+var air_closing := 0.0             # how fast the board and that surface are coming together (m/s): falling onto it, or it rising up to you
 var spin_vel := 0.0
 var exit_align := 0.0
 var trick_controls := TrickControls.new()
@@ -323,6 +325,7 @@ func respawn(where: SpawnPoint = null) -> void:
 	loop = null
 	frame_right = null
 	up = UP
+	air_gap = -1.0
 	ground_normal = UP
 	spin_vel = 0.0
 	exit_align = 0.0
@@ -937,7 +940,7 @@ func air_step(h: float) -> void:
 		pass_intent = true
 	hug_wall(h)
 	lip_air(h)
-	sample_air_floor()
+	sample_air_floor(h)
 
 	var np := pos + vel * h
 	np = clamp_bounds(np)
@@ -1137,12 +1140,18 @@ func trick_credit() -> String:
 
 
 # What is below the airborne board, so its tilt can ease towards that surface's before it lands.
-func sample_air_floor() -> void:
+func sample_air_floor(h: float) -> void:
 	var hit := world.ground(pos.x, pos.z, pos.y + 0.2, _hit, 40.0)
 	air_floor_found = hit != null
+	var was := air_gap if air_time > h * 1.5 else -1.0
+	air_gap = -1.0
+	air_closing = 0.0
 	if hit != null:
 		air_floor_y = hit.y
 		air_floor_normal = hit.normal
+		air_gap = pos.y - hit.y
+		if was >= 0.0:
+			air_closing = (was - air_gap) / h
 
 
 # Airs near a coping lip stay over the pit regardless of speed unless an ollie and forward input
@@ -2138,15 +2147,14 @@ func update_visuals(dt: float) -> void:
 		up = up.lerp(u, 1.0 - exp(-30.0 * dt)).normalized()
 	elif mode == Mode.AIR:
 		# Keep the tilt we left the surface with, the whole way up and over: it is not levelled out however high you are, or over
-		# whatever flat is below. Only coming down, in the last moments before it lands, ease towards what it is about to land on,
-		# faster as that gets close.
+		# whatever flat is below. Only in the last moments before the board and the surface below meet (it falling onto it, or it
+		# rising up to the board, as a ramp's slope does), ease towards that surface, faster as it gets close.
 		var rate: float = T.airTiltFar
 		var target := UP
 		if air_floor_found:
 			target = air_floor_normal
-			var falling := -vel.y
-			if falling > 0.1:
-				var time_left := (pos.y - air_floor_y) / falling
+			if air_closing > 0.1:
+				var time_left := air_gap / air_closing
 				rate += (T.airTiltNear - T.airTiltFar) * clampf(1.0 - time_left / T.airTiltTime, 0.0, 1.0)
 		up = up.lerp(target, 1.0 - exp(-rate * dt)).normalized()
 	else:
