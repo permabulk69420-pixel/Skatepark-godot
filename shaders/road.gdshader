@@ -1,6 +1,6 @@
 // The asphalt out front. One texture laid in the world, but not in a grid you can see: it is read twice, at two sizes and turned against
-// each other, and the two are blended by a slow, patchy noise, with a gentle change of tone across tens of metres on top. (A 3 m texture
-// laid plainly repeats itself every couple of metres down a 500 m road.)
+// each other, and the two are blended by a slow, patchy noise, with a gentle change of tone across tens of metres on top. (A texture a
+// couple of metres across, laid plainly, repeats itself all the way down a 500 m road.)
 shader_type spatial;
 
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
