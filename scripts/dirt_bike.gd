@@ -44,7 +44,8 @@ const WALL_PROBES := [0.3, 0.75]   # heights above the ground the bike feels wal
 const FRONT_REACH := 0.95          # from the middle to the front of the front tyre
 const LIFT_PROBE := 0.7            # the ground is looked for from this far above the bike
 const AIR_PITCH := 0.7             # rad/s the throttle (nose up) or the brake (nose down) turns it in the air
-const LEAN_CLEARANCE := deg_to_rad(2.0)   # the bike leans as far as the rider does, up to this short of touching the ground,
+const LEAN_CLEARANCE := deg_to_rad(0.0)   # the bike leans as far as the rider does, up to just before touching the ground (measured by
+                                   # tilting the model: it clips at 59.5 degrees; this stops it at 59.1),
 const LEAN_PIVOT := 0.075          # about the line its tyres roll on (the middle of their round tread), as a real bike: you lean with it
 const LEAN_TURNS_FROM := 1.5       # m/s: slower than this leaning does not turn it; by this speed it fully does
 const LEAN_TURNS_FULL := 5.0
