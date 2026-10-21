@@ -84,12 +84,12 @@ func update(dt: float, brake: float, paddle: float, flat_throttle := 0.0, flat_s
 	return happened
 
 
-# How far the rider leans the bike (radians, left +), one for one: the angle the line from the bike's centre line (where it leans about,
-# on its tyres) up to the headset makes with the bike's upright. (The view is bolted to the bike, so the bike leaning with you does not
-# move your head in its frame: leaning is only ever you.)
+# How far the rider leans the bike (radians, left +), one for one: how far the headset is tilted away from the bike's middle (the upright
+# plane through it, front to back). (The view is bolted to the bike, so the bike leaning with you does not tilt your head in its frame:
+# leaning is only ever you.)
 func body_lean() -> float:
-	var head := bike.ride_transform().affine_inverse() * camera.global_position
-	return atan2(-head.x, maxf(head.y - DirtBike.LEAN_PIVOT, 0.1))
+	var head_up := (bike.ride_transform().basis.inverse() * camera.global_basis.y).normalized()
+	return asin(clampf(-head_up.x, -1.0, 1.0))
 
 
 # Throttle from how far the right grip is twisted back.

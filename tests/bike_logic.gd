@@ -285,14 +285,17 @@ func run() -> void:
 	left.global_position += level_basis * Vector3(0.0, 0.0, 0.15)
 	vr_ride.update(DT, 0.0, 0.0)
 	check(vr_ride.controls.steer_to > 0.2, "pushing the right hand forward and pulling the left back turns the bars left (%.2f)" % vr_ride.controls.steer_to)
+	var upright_head := fake_camera.transform
+	fake_camera.transform.basis = Basis(Vector3.BACK, deg_to_rad(15.0)) * upright_head.basis   # (the head tilted 15 degrees to the left)
+	vr_ride.update(DT, 0.0, 0.0)
+	check(absf(vr_ride.controls.lean - deg_to_rad(15.0)) < 0.002, "the headset tilted 15 degrees left of the bike's middle leans it 15 degrees left (%.1f)" % rad_to_deg(vr_ride.controls.lean))
+	fake_camera.transform.basis = Basis(Vector3.BACK, deg_to_rad(-30.0)) * upright_head.basis
+	vr_ride.update(DT, 0.0, 0.0)
+	check(absf(vr_ride.controls.lean + deg_to_rad(30.0)) < 0.002, "and 30 degrees right, 30 right (%.1f)" % rad_to_deg(vr_ride.controls.lean))
+	fake_camera.transform = upright_head
 	fake_camera.position.x -= 0.2
 	vr_ride.update(DT, 0.0, 0.0)
-	var up := BikeRide.SEATED_EYE - DirtBike.LEAN_PIVOT
-	check(absf(vr_ride.controls.lean - atan2(0.2, up)) < 0.002, "your head 20 cm left of the bike's centre line leans it left one for one (%.1f degrees)" % rad_to_deg(vr_ride.controls.lean))
-	fake_camera.position.x -= 0.2
-	vr_ride.update(DT, 0.0, 0.0)
-	check(absf(vr_ride.controls.lean - atan2(0.4, up)) < 0.002, "and 40 cm, one for one (%.1f degrees)" % rad_to_deg(vr_ride.controls.lean))
-	fake_camera.position.x += 0.2
+	check(absf(vr_ride.controls.lean) < 0.002, "the head moved over but not tilted does not lean it")
 	fake_camera.position.x += 0.2
 	vr_ride.update(DT, 0.0, 0.0)
 	check(absf(vr_ride.controls.lean) < 0.01, "and upright over them, it stands up")
