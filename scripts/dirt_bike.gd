@@ -45,7 +45,6 @@ const FRONT_REACH := 0.95          # from the middle to the front of the front t
 const LIFT_PROBE := 0.7            # the ground is looked for from this far above the bike
 const AIR_PITCH := 0.7             # rad/s the throttle (nose up) or the brake (nose down) turns it in the air
 const LEAN_CLEARANCE := deg_to_rad(2.0)   # the bike leans as far as the rider does, up to this short of touching the ground,
-const LEAN_EASE := 8.0             # following the rider this quickly (it only smooths the tracking),
 const LEAN_PIVOT := 0.075          # about the line its tyres roll on (the middle of their round tread), as a real bike: you lean with it
 const LEAN_TURNS_FROM := 1.5       # m/s: slower than this leaning does not turn it; by this speed it fully does
 const LEAN_TURNS_FULL := 5.0
@@ -248,7 +247,7 @@ func update(c: Controls, dt: float) -> String:
 			happened = "land"
 	pos = next
 	# how it looks
-	lean = lerpf(lean, clampf(c.lean, -lean_limit(), lean_limit()), 1.0 - exp(-dt * LEAN_EASE))
+	lean = clampf(c.lean, -lean_limit(), lean_limit())   # (exactly with the rider, every frame)
 	spin_front = wrapf(spin_front + speed / FRONT_RADIUS * dt, -PI, PI)   # (about the wheel's X: its top goes forward)
 	spin_rear = wrapf(spin_rear + speed / REAR_RADIUS * dt, -PI, PI)
 	apply()
