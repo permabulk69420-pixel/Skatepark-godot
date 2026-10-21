@@ -1,5 +1,7 @@
 # The dirt bike (assets/bike/dirt_bike.glb): its look (wheels that turn, a front end that steers, a lean into turns) and how it rides.
-# It is a simple bike, not a full one: it steers like a bicycle (the turn follows the speed and the angle of the front wheel), it stands on
+# It is a simple bike, not a full one. It steers two ways, either or both at once: by its bars (the turn follows the speed and the angle of
+# the front wheel, like a bicycle's, and the bike stays upright), and by the rider leaning (the bike leans as far as the rider does, and a
+# leaning bike on the move turns the way it leans, tighter the further it leans and the slower it goes). It stands on
 # whatever is under its two tyres (so it pitches up a ramp and down off it), it flies off what drops away faster than gravity would let it
 # follow, and stops at walls. A five-speed box changes gear by itself; the engine's revs follow the back wheel (or the throttle, with the
 # clutch slipping at a standstill or in the air).
@@ -39,9 +41,12 @@ const WALL_PROBES := [0.3, 0.75]   # heights above the ground the bike feels wal
 const FRONT_REACH := 0.95          # from the middle to the front of the front tyre
 const LIFT_PROBE := 0.7            # the ground is looked for from this far above the bike
 const AIR_PITCH := 0.7             # rad/s the throttle (nose up) or the brake (nose down) turns it in the air
-const LEAN_SHARE := 0.4            # the bike leans this much of what a real one would in a turn,
-const MAX_LEAN := deg_to_rad(11.0) # never more than this,
-const LEAN_PIVOT := 1.0            # about a line this high (the seat): the rider leans with it, about about their middle
+const LEAN_MAX := deg_to_rad(20.0) # the rider leaning all the way leans the bike this far,
+const LEAN_EASE := 8.0             # following the rider this quickly (it only smooths the tracking),
+const LEAN_PIVOT := 1.0            # about a line this high (the seat): the rider leans with it, about their middle
+const LEAN_TURNS_FROM := 1.5       # m/s: slower than this leaning does not turn it; by this speed it fully does
+const LEAN_TURNS_FULL := 5.0
+const LEAN_TIGHTEST := 3.0         # metres: the tightest turn leaning makes
 
 class Controls:
 	var throttle := 0.0            # 0..1
@@ -49,6 +54,7 @@ class Controls:
 	var steer := 0.0               # -1..1 (a key or stick: left is +), unless `steer_to` is set
 	var steer_to := NAN            # an angle for the bars (radians, left +): the rider's hands
 	var paddle := 0.0              # -1..1: walking it forwards or back while (nearly) stopped
+	var lean := 0.0                # -1..1: the rider leaning (left +); all the way is the bike at LEAN_MAX
 
 var node: Node3D                   # the piece: everything moves with it
 var model: Node3D
@@ -69,7 +75,7 @@ var speed := 0.0                   # m/s along the way it points (negative: roll
 var vy := 0.0
 var air := false
 var pitch := 0.0                   # nose up +
-var lean := 0.0                    # into a left turn +
+var lean := 0.0                    # to the left +: only ever the rider's doing
 var steer := 0.0                   # the bars, left +
 var throttle := 0.0
 var rpm := IDLE
@@ -187,7 +193,7 @@ func update(c: Controls, dt: float) -> String:
 		speed -= GRAVITY * sin(pitch) * dt   # (uphill slows it, downhill runs it on; it rolls back off a slope)
 		if absf(speed) < PADDLE_SPEED * 1.2 and absf(c.paddle) > 0.2 and throttle < 0.05:
 			speed = move_toward(speed, c.paddle * PADDLE_SPEED, dt * 3.0)
-		yaw = wrapf(yaw + speed * tan(steer) / WHEELBASE * dt, -PI, PI)
+		yaw = wrapf(yaw + (speed * tan(steer) / WHEELBASE + lean_turn_rate()) * dt, -PI, PI)
 	# where it goes
 	var along := forward() * signf(speed)
 	var step := absf(speed) * cos(pitch) * dt if not air else absf(speed) * dt
@@ -239,12 +245,20 @@ func update(c: Controls, dt: float) -> String:
 			happened = "land"
 	pos = next
 	# how it looks
-	var lean_to := 0.0 if air else clampf(atan(speed * speed * tan(steer) / WHEELBASE / GRAVITY) * LEAN_SHARE, -MAX_LEAN, MAX_LEAN)
-	lean = lerpf(lean, lean_to, 1.0 - exp(-dt * 3.0))
+	lean = lerpf(lean, clampf(c.lean, -1.0, 1.0) * LEAN_MAX, 1.0 - exp(-dt * LEAN_EASE))
 	spin_front = wrapf(spin_front + speed / FRONT_RADIUS * dt, -PI, PI)   # (about the wheel's X: its top goes forward)
 	spin_rear = wrapf(spin_rear + speed / REAR_RADIUS * dt, -PI, PI)
 	apply()
 	return happened
+
+
+# How fast leaning turns it (rad/s, left +): as a real bike balanced in a turn, g·tan(lean) / speed, coming in from LEAN_TURNS_FROM,
+# and never tighter than LEAN_TIGHTEST.
+func lean_turn_rate() -> float:
+	var going := absf(speed)
+	var share := clampf((going - LEAN_TURNS_FROM) / (LEAN_TURNS_FULL - LEAN_TURNS_FROM), 0.0, 1.0)
+	var rate := GRAVITY * tan(lean) / maxf(going, LEAN_TURNS_FULL) * share * signf(speed)
+	return clampf(rate, -going / LEAN_TIGHTEST, going / LEAN_TIGHTEST)
 
 
 # Puts the bike where it is: its pose, the front end turned, the wheels round.

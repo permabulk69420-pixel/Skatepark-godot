@@ -103,7 +103,21 @@ func run() -> void:
 	var yaw_before := bike.yaw
 	ride(1.0, 0.4, 0.0, 1.0)
 	check(angle_difference(yaw_before, bike.yaw) > 0.2, "A steers it left (%.2f rad)" % angle_difference(yaw_before, bike.yaw))
-	check(bike.lean > 0.05 and bike.lean <= DirtBike.MAX_LEAN + 1e-4, "it leans into the turn, gently (%.1f degrees)" % rad_to_deg(bike.lean))
+	check(absf(bike.lean) < 1e-4, "turning the bars does not lean it (%.1f degrees)" % rad_to_deg(bike.lean))
+
+	# leaning: the bike leans as far as you do, and leaning turns it
+	put(bike, Vector3(30.0, HubRoads.HEIGHT, -HubRoads.MAIN_Y), PI / 2.0)
+	ride(1.5, 0.6)
+	yaw_before = bike.yaw
+	var leaning := DirtBike.Controls.new()
+	leaning.throttle = 0.4
+	leaning.lean = 1.0
+	for i in 72:
+		bike.update(leaning, DT)
+	check(absf(bike.lean - DirtBike.LEAN_MAX) < 0.01, "leaning all the way leans it all the way (%.1f degrees)" % rad_to_deg(bike.lean))
+	check(angle_difference(yaw_before, bike.yaw) > 0.3 and absf(bike.steer) < 1e-4, "and turns it left on its own, the bars straight (%.2f rad)" % angle_difference(yaw_before, bike.yaw))
+	main.ride._follow()
+	check(main.rig.global_basis.x.distance_to(bike.node.global_basis.x) < 0.001 and absf(main.rig.global_basis.x.y) > 0.05, "the view leans with it, as it tilts with the board")
 	var grip_in_ride: Vector3 = bike.ride_transform().affine_inverse() * bike.grip_markers.right.global_position
 	var was_lean := bike.lean
 	bike.lean = 0.0
@@ -112,8 +126,15 @@ func run() -> void:
 	bike.lean = was_lean
 	bike.apply()
 	check(grip_in_ride.distance_to(grip_upright) < 0.005, "you lean with it: the bars stay just where your hands are (%.3f m)" % grip_in_ride.distance_to(grip_upright))
-	main.ride.update(DT, 0.0, 0.0, 0.4, 1.0)
-	check(main.rig.global_basis.x.distance_to(bike.node.global_basis.x) < 0.001 and absf(main.rig.global_basis.x.y) > 0.05, "and the view leans with it, as it tilts with the board")
+	put(bike, Vector3(30.0, HubRoads.HEIGHT, -HubRoads.MAIN_Y), PI / 2.0)
+	leaning.throttle = 0.0
+	leaning.paddle = 1.0
+	for i in 72:
+		bike.update(leaning, DT)
+	check(absf(angle_difference(PI / 2.0, bike.yaw)) < 0.05, "at a walk leaning does not turn it")
+	put(bike, Vector3(30.0, HubRoads.HEIGHT, -HubRoads.MAIN_Y), PI / 2.0)
+	ride(1.5, 0.6)
+	ride(1.0, 0.4, 0.0, 1.0)   # (A again, for the checks below)
 	var fork_ahead: Vector3 = bike.node.global_basis.inverse() * bike.pivot.global_basis.z   # (the model's +Z: the bike's forward)
 	check(fork_ahead.x < -0.1, "the front wheel turns left with it (%.3f)" % fork_ahead.x)
 	var spin := bike.spin_rear
@@ -218,6 +239,12 @@ func run() -> void:
 	left.global_position += level_basis * Vector3(0.0, 0.0, 0.15)
 	vr_ride.update(DT, 0.0, 0.0)
 	check(vr_ride.controls.steer_to > 0.2, "pushing the right hand forward and pulling the left back turns the bars left (%.2f)" % vr_ride.controls.steer_to)
+	fake_camera.position.x -= 0.2
+	vr_ride.update(DT, 0.0, 0.0)
+	check(vr_ride.controls.lean > 0.7, "leaning your head left over the pegs leans it left (%.2f)" % vr_ride.controls.lean)
+	fake_camera.position.x += 0.2
+	vr_ride.update(DT, 0.0, 0.0)
+	check(absf(vr_ride.controls.lean) < 0.01, "and upright over them, it stands up")
 	right.floats["grip"] = 0.0
 	vr_ride.update(DT, 0.0, 0.0)
 	check(not vr_ride.holding("right") and vr_ride.controls.throttle == 0.0, "letting go of the right grip shuts the throttle")

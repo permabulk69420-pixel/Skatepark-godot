@@ -1,7 +1,8 @@
 # Riding a dirt bike: you, the bike, and your hands on its bars. Walk up to a bike to get on (it is the same as stepping on the board); in
 # the headset you stand on its pegs, bolted to it as you are to the board: you turn, pitch and lean with it.
 #   The headset: squeeze a grip with a hand on a handlebar grip to hold it. Twist the right grip back for throttle, as on a real bike; the
-#   right trigger is the brake. With both hands on, the bars turn the way you turn them. Let go with both and it shuts off and coasts.
+#   right trigger is the brake. With both hands on, the bars turn the way you turn them. Lean your body (your head, side to side over the
+#   pegs) and the bike leans with you and turns that way; bars and leaning work together. Let go with both and it shuts off and coasts.
 #   Nearly stopped, the left stick walks it forwards or back.
 #   A flat screen: W throttle, S brake (and, stopped, back), A / D steer.
 # Getting off is the same as stepping off the board (the right stick held down, Q on a flat screen); you stand beside it on the left.
@@ -16,6 +17,8 @@ const SQUEEZE_OFF := 0.35
 const TWIST_DEAD := deg_to_rad(4.0)     # twisting the right grip back: nothing for this much,
 const TWIST_FULL := deg_to_rad(65.0)    # full throttle at this much,
 const TWIST_CURVE := 1.6                # building up as this power of the way between (a little twist, a little throttle)
+const BODY_DEAD := 0.03            # metres your head can be off the middle of the bike, side to side, without leaning it,
+const BODY_FULL := 0.22            # and this far is leaning all the way
 const STEP_OFF_SIDE := 0.75        # getting off puts you this far to the left of the bike
 const FLAT_EYE := 1.55             # a flat screen: the eye above the ground,
 const FLAT_LOOK_DOWN := 0.18       # looking a little down the road
@@ -68,13 +71,22 @@ func update(dt: float, brake: float, paddle: float, flat_throttle := 0.0, flat_s
 		controls.throttle = throttle_for(twist) if grips.has("right") else 0.0
 		controls.steer = 0.0
 		controls.steer_to = DirtBike.hand_steer(bar_angle(), bike.speed) if grips.has("left") and grips.has("right") else NAN
+		controls.lean = body_lean()
 	else:
 		controls.throttle = flat_throttle
 		controls.steer = flat_steer
 		controls.steer_to = NAN
+		controls.lean = 0.0
 	var happened := bike.update(controls, dt)
 	_follow()
 	return happened
+
+
+# How far the rider leans (-1..1, left +): the head's way off the middle of the bike, side to side. (The view is bolted to the bike, so the
+# bike leaning with you does not move your head in its frame: leaning is only ever you.)
+func body_lean() -> float:
+	var off := -(bike.ride_transform().affine_inverse() * camera.global_position).x
+	return signf(off) * clampf((absf(off) - BODY_DEAD) / (BODY_FULL - BODY_DEAD), 0.0, 1.0)
 
 
 # Throttle from how far the right grip is twisted back.
