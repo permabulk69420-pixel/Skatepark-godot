@@ -1,5 +1,5 @@
 # Riding a dirt bike: you, the bike, and your hands on its bars. Walk up to a bike to get on (it is the same as stepping on the board); in
-# the headset you sit on it, bolted to it as you are to the board: you turn, pitch and lean with it.
+# the headset you sit on it: you turn and pitch with it, and the bike leans as far as your head does.
 #   The headset: squeeze a grip with a hand on a handlebar grip to hold it. Twist the right grip back for throttle, as on a real bike; the
 #   right trigger is the brake. With both hands on, the bars turn the way you turn them. Lean your body (your head, side to side over the
 #   pegs) and the bike leans with you and turns that way; bars and leaning work together. Let go with both and it shuts off and coasts.
@@ -59,7 +59,7 @@ func _init(p_bike: DirtBike, p_rig: Node3D, p_camera: Camera3D, p_hands: VrHands
 		var target := bike.rider_point()
 		var basis := Basis(Vector3.UP, bike.yaw - head_yaw)
 		var xf := Transform3D(basis, Vector3(target.x, target.y + SEATED_EYE - head_local.y, target.z) - basis * Vector3(head_local.x, 0.0, head_local.z))
-		rig_rel = bike.ride_transform().affine_inverse() * xf
+		rig_rel = bike.upright_transform().affine_inverse() * xf
 	_follow()
 
 
@@ -88,7 +88,7 @@ func update(dt: float, brake: float, paddle: float, flat_throttle := 0.0, flat_s
 # plane through it, front to back). (The view is bolted to the bike, so the bike leaning with you does not tilt your head in its frame:
 # leaning is only ever you.)
 func body_lean() -> float:
-	var head_up := (bike.ride_transform().basis.inverse() * camera.global_basis.y).normalized()
+	var head_up := (bike.upright_transform().basis.inverse() * camera.global_basis.y).normalized()
 	return asin(clampf(-head_up.x, -1.0, 1.0))
 
 
@@ -102,7 +102,7 @@ static func throttle_for(angle: float) -> float:
 func bar_angle() -> float:
 	var left := (grips.left.state as VrHands.HandState).controller.global_position
 	var right := (grips.right.state as VrHands.HandState).controller.global_position
-	return bar_angle_of(bike.ride_transform().basis.inverse() * (right - left))
+	return bar_angle_of(bike.upright_transform().basis.inverse() * (right - left))
 
 
 static func bar_angle_of(bar: Vector3) -> float:
@@ -121,7 +121,7 @@ static func twist_about_bar(from: Quaternion, now: Quaternion) -> float:
 # Each hand takes a grip when it squeezes near one, and lets go when it stops squeezing.
 func _update_grips() -> void:
 	# (measured in the frame the rider rides in, which moves with the bike: its pitching up a ramp or leaning is not a twist)
-	var frame := bike.ride_transform().basis.get_rotation_quaternion().inverse()
+	var frame := bike.upright_transform().basis.get_rotation_quaternion().inverse()
 	for state in hands.states:
 		var side := state.handedness
 		var held: bool = grips.has(side)
@@ -182,10 +182,14 @@ func end() -> Dictionary:
 	return {"pos": level * Vector3(-STEP_OFF_SIDE, 0.0, 0.1), "yaw": bike.yaw}
 
 
-# The rig is bolted to the bike: it keeps where it was on it, turning, pitching and leaning with it. On a flat screen the eye is over the
-# pegs, looking down the road.
+# The rig rides on the bike: it turns and pitches with it, and sits on its seat, going over with the seat as the bike leans. It does not roll
+# with the lean as well: your own tilt rolls your view, and the bike leans as far as your head does, so the two stay together and the bars stay
+# at your hands. (Rolled by the lean too, your view turned twice as far as you leaned, and the bike never moved from your head.) On a flat
+# screen the eye is over the pegs, looking down the road.
 func _follow() -> void:
-	var frame := bike.ride_transform()
+	var upright := bike.upright_transform()
+	var seat := Vector3(0.0, DirtBike.SEAT_HEIGHT, DirtBike.RIDER.z)
+	var frame := Transform3D(upright.basis, upright.origin + bike.ride_transform() * seat - upright * seat)
 	if vr:
 		rig.global_transform = frame * rig_rel
 	else:

@@ -17,6 +17,7 @@ const WHEELBASE := 1.49
 const FRONT_RADIUS := 0.355
 const REAR_RADIUS := 0.338
 const PEG_HEIGHT := 0.413          # the footpegs above the ground
+const SEAT_HEIGHT := 0.996         # the seat (the model's Seat_Anchor): the rider sits here, and goes over with it as it leans
 # Each rubber grip's own axis (it is swept back off the straight line between them), in the frame of the model's grip empties: measured
 # from the model, through the middle of the grip, where the empty is.
 const GRIP_AXES := {"Right_Grip": Vector3(0.990, 0.039, -0.132), "Left_Grip": Vector3(0.989, -0.045, 0.142)}
@@ -135,6 +136,11 @@ func level_transform() -> Transform3D:
 
 
 # The frame the rider rides in: the bike's own, every way it turns, pitches and leans (as the board carries the skater).
+# The bike's frame turned and pitched with it, but not leaned: the rider's own upright, which the rider's lean is measured from.
+func upright_transform() -> Transform3D:
+	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos)
+
+
 func ride_transform() -> Transform3D:
 	var pivot_up := Transform3D(Basis.IDENTITY, Vector3(0.0, LEAN_PIVOT, 0.0))
 	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos) * pivot_up * Transform3D(Basis(Vector3.BACK, lean), Vector3.ZERO) \
