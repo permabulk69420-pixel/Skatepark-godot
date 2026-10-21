@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://dhaee6w458sib"
+path="res://.godot/imported/arcade_machine_Arcade_BaseColor_1024.png-02e8328572847d2ee78ad9a12a13d649.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "b778b2793154253f64e985842e36de74"
+}
+
+[deps]
+
+source_file="res://assets/arcade/arcade_machine_Arcade_BaseColor_1024.png"
+dest_files=["res://.godot/imported/arcade_machine_Arcade_BaseColor_1024.png-02e8328572847d2ee78ad9a12a13d649.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

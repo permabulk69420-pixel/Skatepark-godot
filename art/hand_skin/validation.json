@@ -1,0 +1,87 @@
+{
+  "godot": "4.4.1.stable.official.49a5bc7b6",
+  "renderer": "OpenGL Compatibility, Mesa llvmpipe via Xvfb",
+  "suites": [
+    {
+      "suite": "halfpipe_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 95
+    },
+    {
+      "suite": "vr_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 29
+    },
+    {
+      "suite": "hands_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 66
+    },
+    {
+      "suite": "hub_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 36
+    },
+    {
+      "suite": "level_switch",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 8
+    },
+    {
+      "suite": "score_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 35
+    },
+    {
+      "suite": "watch_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 26
+    },
+    {
+      "suite": "run_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 34
+    },
+    {
+      "suite": "grind_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 4
+    },
+    {
+      "suite": "board_prop_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 10
+    }
+  ],
+  "passed_assertions": 343,
+  "unchanged": [
+    "LeftHand.glb",
+    "RightHand.glb",
+    "grip_solution.json"
+  ],
+  "maps": {
+    "albedo": [
+      1024,
+      1024
+    ],
+    "normal": [
+      512,
+      512
+    ],
+    "roughness": [
+      512,
+      512
+    ]
+  },
+  "headset_rendering_tested": false
+}

@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://begjaen0krest"
+path="res://.godot/imported/skateboard_Hardware_BaseColor.webp-6dce7ed527c7cbb2bdbca759bd9e84f4.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "879cc62a1d14f04415f30a52343228f9"
+}
+
+[deps]
+
+source_file="res://assets/board/skateboard_Hardware_BaseColor.webp"
+dest_files=["res://.godot/imported/skateboard_Hardware_BaseColor.webp-6dce7ed527c7cbb2bdbca759bd9e84f4.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

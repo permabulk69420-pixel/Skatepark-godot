@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="wooden_halfpipe.glb" id="1_visual"]
+[ext_resource type="Shape3D" path="wooden_halfpipe_collision.tres" id="2_collision"]
+
+[node name="WoodenHalfpipe" type="Node3D"]
+
+[node name="Visual" parent="." instance=ExtResource("1_visual")]
+
+[node name="COL_WoodenHalfPipe" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="COL_WoodenHalfPipe"]
+shape = ExtResource("2_collision")

@@ -1,0 +1,73 @@
+{
+  "engine": "Godot 4.4.1",
+  "total_assertions": 381,
+  "suites": [
+    {
+      "suite": "halfpipe_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 95
+    },
+    {
+      "suite": "vr_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 29
+    },
+    {
+      "suite": "hands_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 66
+    },
+    {
+      "suite": "hub_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 36
+    },
+    {
+      "suite": "level_switch",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 8
+    },
+    {
+      "suite": "score_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 35
+    },
+    {
+      "suite": "watch_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 26
+    },
+    {
+      "suite": "run_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 34
+    },
+    {
+      "suite": "grind_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 4
+    },
+    {
+      "suite": "board_prop_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 10
+    },
+    {
+      "suite": "driveway_logic",
+      "exit_code": 0,
+      "passed": true,
+      "passed_assertions": 38
+    }
+  ],
+  "visual_check": "Godot Compatibility renderer, Mesa llvmpipe; gate, driveway, ramp connection and overview inspected. Quest performance not measured."
+}
