@@ -126,10 +126,18 @@ func run() -> void:
 	yaw_before = bike.yaw
 	var leaning := DirtBike.Controls.new()
 	leaning.throttle = 0.4
-	leaning.lean = 1.0
+	leaning.lean = PI / 2.0   # (leaning as far as you can)
 	for i in 72:
 		bike.update(leaning, DT)
-	check(absf(bike.lean - DirtBike.LEAN_MAX) < 0.01, "leaning all the way leans it all the way (%.1f degrees)" % rad_to_deg(bike.lean))
+	check(absf(bike.lean - DirtBike.lean_limit()) < 0.01 and bike.lean > deg_to_rad(40.0), "leaning as far as you can leans it as far as a real bike goes (%.1f degrees)" % rad_to_deg(bike.lean))
+	var lowest := 1e9
+	for mesh in bike.model.find_children("*", "MeshInstance3D", true, false):
+		if String(mesh.name).ends_with("_Wheel"):
+			continue
+		var mesh_xf: Transform3D = (mesh as MeshInstance3D).global_transform
+		for v in (mesh as MeshInstance3D).mesh.get_faces():
+			lowest = minf(lowest, (mesh_xf * v).y)
+	check(lowest > bike.pos.y, "and nothing of it touches the ground (%.3f m clear)" % (lowest - bike.pos.y))
 	check(angle_difference(yaw_before, bike.yaw) > 0.3 and absf(bike.steer) < 1e-4, "and turns it left on its own, the bars straight (%.2f rad)" % angle_difference(yaw_before, bike.yaw))
 	main.ride._follow()
 	check(main.rig.global_basis.x.distance_to(bike.node.global_basis.x) < 0.001 and absf(main.rig.global_basis.x.y) > 0.05, "the view leans with it, as it tilts with the board")
@@ -279,7 +287,11 @@ func run() -> void:
 	check(vr_ride.controls.steer_to > 0.2, "pushing the right hand forward and pulling the left back turns the bars left (%.2f)" % vr_ride.controls.steer_to)
 	fake_camera.position.x -= 0.2
 	vr_ride.update(DT, 0.0, 0.0)
-	check(vr_ride.controls.lean > 0.7, "leaning your head left over the pegs leans it left (%.2f)" % vr_ride.controls.lean)
+	check(absf(vr_ride.controls.lean - deg_to_rad(17.9)) < deg_to_rad(0.5), "leaning your head 20 cm left leans it about 18 degrees left (%.1f)" % rad_to_deg(vr_ride.controls.lean))
+	fake_camera.position.x -= 0.2
+	vr_ride.update(DT, 0.0, 0.0)
+	check(absf(vr_ride.controls.lean - deg_to_rad(38.9)) < deg_to_rad(0.5), "and 40 cm, about 39: it follows you as far as you lean (%.1f)" % rad_to_deg(vr_ride.controls.lean))
+	fake_camera.position.x += 0.2
 	fake_camera.position.x += 0.2
 	vr_ride.update(DT, 0.0, 0.0)
 	check(absf(vr_ride.controls.lean) < 0.01, "and upright over them, it stands up")

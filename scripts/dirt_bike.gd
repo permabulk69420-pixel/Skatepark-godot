@@ -44,9 +44,9 @@ const WALL_PROBES := [0.3, 0.75]   # heights above the ground the bike feels wal
 const FRONT_REACH := 0.95          # from the middle to the front of the front tyre
 const LIFT_PROBE := 0.7            # the ground is looked for from this far above the bike
 const AIR_PITCH := 0.7             # rad/s the throttle (nose up) or the brake (nose down) turns it in the air
-const LEAN_MAX := deg_to_rad(20.0) # the rider leaning all the way leans the bike this far,
+const LEAN_CLEARANCE := deg_to_rad(2.0)   # the bike leans as far as the rider does, up to this short of touching the ground,
 const LEAN_EASE := 8.0             # following the rider this quickly (it only smooths the tracking),
-const LEAN_PIVOT := 1.0            # about a line this high (the seat): the rider leans with it, about their middle
+const LEAN_PIVOT := 0.075          # about the line its tyres roll on (the middle of their round tread), as a real bike: you lean with it
 const LEAN_TURNS_FROM := 1.5       # m/s: slower than this leaning does not turn it; by this speed it fully does
 const LEAN_TURNS_FULL := 5.0
 const LEAN_TIGHTEST := 3.0         # metres: the tightest turn leaning makes
@@ -57,7 +57,7 @@ class Controls:
 	var steer := 0.0               # -1..1 (a key or stick: left is +), unless `steer_to` is set
 	var steer_to := NAN            # an angle for the bars (radians, left +): the rider's hands
 	var paddle := 0.0              # -1..1: walking it forwards or back while (nearly) stopped
-	var lean := 0.0                # -1..1: the rider leaning (left +); all the way is the bike at LEAN_MAX
+	var lean := 0.0                # the lean the rider is asking for (radians, left +); it goes as far as lean_limit()
 
 var node: Node3D                   # the piece: everything moves with it
 var model: Node3D
@@ -248,11 +248,42 @@ func update(c: Controls, dt: float) -> String:
 			happened = "land"
 	pos = next
 	# how it looks
-	lean = lerpf(lean, clampf(c.lean, -1.0, 1.0) * LEAN_MAX, 1.0 - exp(-dt * LEAN_EASE))
+	lean = lerpf(lean, clampf(c.lean, -lean_limit(), lean_limit()), 1.0 - exp(-dt * LEAN_EASE))
 	spin_front = wrapf(spin_front + speed / FRONT_RADIUS * dt, -PI, PI)   # (about the wheel's X: its top goes forward)
 	spin_rear = wrapf(spin_rear + speed / REAR_RADIUS * dt, -PI, PI)
 	apply()
 	return happened
+
+
+# How far it can lean before any of it (but its tyres, which roll over on to their sides) would touch the ground, less LEAN_CLEARANCE:
+# worked out once from the model. For each point of it, out `a` to the side and `y` up, leaning by θ about the pivot line at height h
+# puts it at h + (y − h)·cos θ − a·sin θ, which is 0 at θ = acos(−h / R) − φ (R, φ: the point's distance and direction from the pivot).
+static var _lean_limit := -1.0
+static func lean_limit() -> float:
+	if _lean_limit >= 0.0:
+		return _lean_limit
+	var piece := BuildPieces.make("bike", "measure")
+	var first := PI / 2.0
+	var stack: Array = [[piece, Transform3D.IDENTITY]]
+	while not stack.is_empty():
+		var item: Array = stack.pop_back()
+		var node: Node = item[0]
+		var xf: Transform3D = item[1]
+		if node is MeshInstance3D and not String(node.name).ends_with("_Wheel"):
+			for v in (node as MeshInstance3D).mesh.get_faces():
+				var p := xf * v
+				var a := absf(p.x)
+				var up := p.y - LEAN_PIVOT
+				var r := Vector2(a, up).length()
+				if a < 0.01 or r < LEAN_PIVOT:
+					continue
+				first = minf(first, acos(-LEAN_PIVOT / r) - atan2(a, up))
+		for child in node.get_children():
+			if child is Node3D:
+				stack.append([child, xf * (child as Node3D).transform])
+	piece.free()
+	_lean_limit = maxf(first - LEAN_CLEARANCE, 0.0)
+	return _lean_limit
 
 
 # How fast leaning turns it (rad/s, left +): as a real bike balanced in a turn, g·tan(lean) / speed, coming in from LEAN_TURNS_FROM,
