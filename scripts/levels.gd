@@ -13,8 +13,8 @@ const LEVELS := {
 		"name": "Home",
 		"file": "res://assets/levels/hub.glb",
 		"blurb": "Walk to the TV, pick up the remote, choose a level · the half pipe is out the back · hold the left menu button to come back here",
-		# Include the driveway's six-metre extension beyond the front gate.
-		"bounds": {"x": 20.0, "z": 24.0, "cx": 0.0, "cz": -6.0},
+		# The property, and out front the road past the house (500 m long) and the loop south of it (HubRoads).
+		"bounds": {"x": 260.0, "z": 130.0, "cx": 0.0, "cz": 100.0},
 		"camera_far": 400.0,
 		"look": {
 			# golden hour: a low warm sun from the west-south-west and a warm horizon

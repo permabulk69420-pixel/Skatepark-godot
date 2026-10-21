@@ -1,4 +1,4 @@
-# A paved route beside the west wall, from the open front gate to the back yard, which is paved from the back of the house to the fences
+# A paved route beside the west wall, from the road out front (HubRoads) through the open front gate to the back yard, which is paved from the back of the house to the fences
 # (over the old ramp slab, which is taken out). The house stays in its original GLB; only the boundary meshes are substituted.
 class_name HubDriveway
 extends RefCounted
@@ -10,7 +10,7 @@ const GATE_Z := 12.0
 const OPENING := 5.2
 const YARD := Rect2(-19.8, 10.8, 39.6, 19.0)   # the paved back yard: fence to fence, from the back of the house to the back fence
 const OUTLINE := [
-	Vector2(-14.9, -18.0), Vector2(-10.1, -18.0),
+	Vector2(-14.9, -20.0), Vector2(-10.1, -20.0),
 	Vector2(-10.1, 8.8), Vector2(-8.1, 10.8), Vector2(19.8, 10.8),
 	Vector2(19.8, 29.8), Vector2(-19.8, 29.8),
 	Vector2(-19.8, 10.8), Vector2(-14.9, 10.8),
@@ -66,8 +66,9 @@ static func add_to(root: Node3D) -> bool:
 	# gate is open, its dirt must support feet/wheels too, including beside the paving.
 	var verge := SurfaceTool.new()
 	verge.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for rect: Rect2 in [Rect2(-250, -250, 230, 500), Rect2(20, -250, 230, 500),
-		Rect2(-20, -250, 40, 238), Rect2(-20, 30, 40, 220)]:
+	var far := HubRoads.GROUND_EXTENT
+	for rect: Rect2 in [Rect2(-far, -far, far - 20, far * 2), Rect2(20, -far, far - 20, far * 2),
+		Rect2(-20, -far, 40, far - 12), Rect2(-20, 30, 40, far - 30)]:
 		var corners := [rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
 			Vector2(rect.position.x, rect.end.y)]
 		for i in [0, 2, 1, 0, 3, 2]:
@@ -77,7 +78,7 @@ static func add_to(root: Node3D) -> bool:
 
 	var joints := SurfaceTool.new()
 	joints.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for north in range(-15, 11, 3):
+	for north in range(-18, 11, 3):
 		_box(joints, Vector3(-12.5, HEIGHT + 0.0005, -north), Vector3(4.8, 0.001, 0.014))
 	# the yard in 3 m bays, lined up with the joints across the drive
 	var east := 0.5 - JOINT_PITCH * floorf((0.5 - YARD.position.x) / JOINT_PITCH)

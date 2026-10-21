@@ -45,7 +45,7 @@ func run() -> void:
 	for x in [-17.0, -8.0]:
 		var query := PhysicsRayQueryParameters3D.create(Vector3(x, 0.8, 10), Vector3(x, 0.8, 14))
 		check(not space.intersect_ray(query).is_empty(), "Fence still blocks beside opening at x %.0f" % x)
-	for p in [Vector2(-16, -16), Vector2(-8, -16), Vector2(-12.5, -19),
+	for p in [Vector2(-16, -16), Vector2(-8, -16), Vector2(-12.5, -35),
 		Vector2(-21, 0), Vector2(21, 0), Vector2(0, 31)]:
 		var query := PhysicsRayQueryParameters3D.create(Vector3(p.x, 1, -p.y), Vector3(p.x, -1, -p.y))
 		var hit := space.intersect_ray(query)
@@ -91,6 +91,32 @@ func run() -> void:
 	main.foot.look_yaw = 0.0
 	for i in 25: main.foot.update(0.05, Vector2(0, 1), 0.0)
 	check(main.foot.body().z < -15.0 and not main.foot.air, "Driveway joins the original ramp slab without a gap")
+	# Out front: the road past the house, the link road and the loop are solid all the way round, and flush with the driveway.
+	var roads: Array[Vector2] = [Vector2(-240, HubRoads.MAIN_Y), Vector2(0, HubRoads.MAIN_Y), Vector2(240, HubRoads.MAIN_Y), Vector2(0, -50)]
+	var loop := HubRoads.loop_points()
+	for i in range(0, loop.size(), 15):
+		roads.append(loop[i])
+	var solid := 0
+	for p in roads:
+		var query := PhysicsRayQueryParameters3D.create(Vector3(p.x, 2, -p.y), Vector3(p.x, -1, -p.y))
+		query.hit_back_faces = false
+		var hit := space.intersect_ray(query)
+		if not hit.is_empty() and absf(hit.position.y - HubRoads.HEIGHT) < 0.002:
+			solid += 1
+	check(solid == roads.size(), "The roads out front have upward-facing collision (%d of %d spots)" % [solid, roads.size()])
+	check(main.level.root.find_child("Road_Lines", true, false) != null, "The roads have painted lines")
+	var ground := main.level.root.find_child("Ground_Dirt_Property", true, false) as MeshInstance3D
+	check(ground.get_aabb().size.x >= HubRoads.GROUND_EXTENT * 2.0 - 1.0, "The dirt goes on out to the horizon (%.0f m across)" % ground.get_aabb().size.x)
+	# Roll out of the gate, down the driveway and on to the road.
+	sim.set_spawn(Vector3(-12.5, HubDriveway.HEIGHT, 15.0), PI)
+	sim.vel = Vector3(0, 0, 4.0)
+	for i in 216: sim.update(command, 1.0 / 72.0)
+	check(sim.pos.z > -HubRoads.MAIN_Y and sim.mode == Skater.Mode.GROUND, "The driveway runs on to the road without a bump (z %.1f)" % sim.pos.z)
+	# and the play area reaches the far side of the loop
+	sim.set_spawn(Vector3(0.0, HubRoads.HEIGHT, -HubRoads.LOOP_CENTRE.y + HubRoads.LOOP_RADIUS - 2.0), PI)
+	sim.vel = Vector3(0, 0, 5.0)
+	for i in 144: sim.update(command, 1.0 / 72.0)
+	check(sim.pos.z > -HubRoads.LOOP_CENTRE.y + HubRoads.LOOP_RADIUS + 5.0, "The hub's play area reaches the far side of the loop (z %.1f)" % sim.pos.z)
 	print("DRIVEWAY_VALIDATION failures=", failures)
 	main.queue_free()
 	await process_frame

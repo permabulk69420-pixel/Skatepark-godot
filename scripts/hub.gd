@@ -25,6 +25,7 @@ static func build_root() -> Node3D:
 	if root == null:
 		root = HubBlockout.build()
 	HubDriveway.add_to(root)
+	HubRoads.add_to(root)
 	HubRamp.add_to(root)
 	BuildPieces.mark_house(root)
 	HubLayout.apply(root, HubLayout.read())
