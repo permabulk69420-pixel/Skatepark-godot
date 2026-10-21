@@ -168,7 +168,8 @@ class Tuning:
 	# eases towards whatever it is about to land on, faster the closer that gets.
 	const airTiltFar := 0.0  # 1/s while far from anything: the tilt you left the surface with is held (it was 0.9, which levelled you out at height)
 	const airTiltNear := 7.0  # 1/s as the landing surface gets close
-	const airTiltReach := 3.0  # metres below which "close" starts
+	const airTiltReach := 3.0  # metres below which "close" starts (no longer used: it is now the time left, below)
+	const airTiltTime := 0.5  # seconds before landing at which the board starts to line up with what it lands on (nothing before that)
 
 	# Axle stall / rock to fakie: catching coping square-on while almost stopped
 	const stallLateral := 0.3

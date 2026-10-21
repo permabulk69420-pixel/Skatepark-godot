@@ -2137,12 +2137,17 @@ func update_visuals(dt: float) -> void:
 		manual_lift = damp(manual_lift, lift, 14.0, dt)
 		up = up.lerp(u, 1.0 - exp(-30.0 * dt)).normalized()
 	elif mode == Mode.AIR:
-		# Keep the tilt we left the surface with; ease towards what is below, faster as it gets close.
+		# Keep the tilt we left the surface with, the whole way up and over: it is not levelled out however high you are, or over
+		# whatever flat is below. Only coming down, in the last moments before it lands, ease towards what it is about to land on,
+		# faster as that gets close.
 		var rate: float = T.airTiltFar
 		var target := UP
 		if air_floor_found:
 			target = air_floor_normal
-			rate += (T.airTiltNear - T.airTiltFar) * clampf(1.0 - (pos.y - air_floor_y) / T.airTiltReach, 0.0, 1.0)
+			var falling := -vel.y
+			if falling > 0.1:
+				var time_left := (pos.y - air_floor_y) / falling
+				rate += (T.airTiltNear - T.airTiltFar) * clampf(1.0 - time_left / T.airTiltTime, 0.0, 1.0)
 		up = up.lerp(target, 1.0 - exp(-rate * dt)).normalized()
 	else:
 		up = up.lerp(UP, 1.0 - exp(-1.6 * dt)).normalized()
