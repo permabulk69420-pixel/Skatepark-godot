@@ -17,6 +17,8 @@ const SQUEEZE_ON := 0.6
 const SQUEEZE_OFF := 0.35
 const TWIST_DEAD := deg_to_rad(4.0)     # twisting the right grip back: nothing for this much,
 const TWIST_FULL := deg_to_rad(50.0)    # full throttle at this much
+const HEAD_KEEP := 0.25            # your head's real up and down and back and forward movement shows this much: leaning moves it about, so
+                                   # the position is mostly locked (looking around and tilting are not touched)
 const STEP_OFF_SIDE := 0.75        # getting off puts you this far to the left of the bike
 const SEATED_EYE := 1.65           # the headset: the eyes this high above the ground, as sitting on the seat (whatever your own height, and
                                    # whether you stand or sit for real)
@@ -186,16 +188,16 @@ func end() -> Dictionary:
 
 # The rig rides on the bike: it turns and pitches with it. Your head stays on the bike's centre line as it goes over, a rider's head over
 # the seat and the bars, however far it leans; only your own tilt rolls your view (the bike leans as far as your head does, so the two stay
-# together and the bars stay at your hands). Rolled by the lean too, your view turned twice as far as you leaned. Your head still moves
-# up and down and back and forward as you move it, but not sideways: that is the bike's, in its lean. On a flat screen the eye is over the
-# pegs, looking down the road.
+# together and the bars stay at your hands). Rolled by the lean too, your view turned twice as far as you leaned. Your head's position is
+# mostly locked to the bike: sideways it is the bike's, and up and down and back and forward only HEAD_KEEP of it shows. It goes up with the
+# front wheel in a wheelie. On a flat screen the eye is over the pegs, looking down the road.
 func _follow() -> void:
 	var upright := bike.upright_transform()
 	if vr:
 		var turned := upright.basis * rig_rel.basis
 		var rest := rig_rel * head_rest   # where your head sat on the bike when you got on, in its frame: on its centre line
 		var head := camera.position
-		var moved := Vector3(0.0, head.y - head_rest.y, head.z - head_rest.z)   # (in the bike's own frame, so it goes over with it)
+		var moved := Vector3(0.0, head.y - head_rest.y, head.z - head_rest.z) * HEAD_KEEP   # (in the bike's own frame, so it goes over with it)
 		rig.global_transform = Transform3D(turned, bike.ride_transform() * (rest + moved) - turned * head)
 	else:
 		var seat := Vector3(0.0, DirtBike.SEAT_HEIGHT, DirtBike.RIDER.z)

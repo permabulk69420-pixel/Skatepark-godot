@@ -1,4 +1,7 @@
 # The dirt bike (assets/bike/dirt_bike.glb): its look (wheels that turn, a front end that steers, a lean into turns) and how it rides.
+# The front wheel comes up when it is driven hard enough from a low speed (a wheelie): the drive lifts the nose about the back tyre, the
+# bike's weight pulls it down (less and less as it goes up, and past a balance point it would flip over backwards), the back brake brings it
+# down, and past a point it is a bail. Holding a wheelie takes a steady, middling throttle.
 # It is a simple bike, not a full one. It steers two ways, either or both at once: by its bars (the turn follows the speed and the angle of
 # the front wheel, like a bicycle's, and the bike stays upright), and by the rider leaning (the bike leans as far as the rider does, and a
 # leaning bike on the move turns the way it leans, tighter the further it leans and the slower it goes). It stands on
@@ -48,6 +51,12 @@ const AIR_PITCH := 0.7             # rad/s the throttle (nose up) or the brake (
 const LEAN_CLEARANCE := deg_to_rad(0.0)   # the bike leans as far as the rider does, up to just before touching the ground (measured by
                                    # tilting the model: it clips at 59.5 degrees; this stops it at 59.1),
 const LEAN_PIVOT := 0.075          # about the line its tyres roll on (the middle of their round tread), as a real bike: you lean with it
+const WHEELIE_LIFT := 1.15          # rad/s² of nose-up for each m/s² the engine is pushing it along
+const WHEELIE_WEIGHT := 5.0        # rad/s² the weight pulls the nose down with the front wheel on the ground,
+const WHEELIE_TILT := deg_to_rad(50.0)   # worked out so the balance point (where the weight stops pulling it down) is 40 degrees up,
+const WHEELIE_DAMP := 6.0          # (the nose rate dies away at this rate: it takes a moment to come up, and to go down)
+const WHEELIE_BRAKE := 6.0         # rad/s² the back brake pulls the nose down with
+const WHEELIE_BAIL := deg_to_rad(46.0)   # and this far up it has gone too far
 const LEAN_TURNS_FROM := 1.5       # m/s: slower than this leaning does not turn it; by this speed it fully does
 const LEAN_TURNS_FULL := 5.0
 const LEAN_TIGHTEST := 3.0         # metres: the tightest turn leaning makes
@@ -79,6 +88,8 @@ var speed := 0.0                   # m/s along the way it points (negative: roll
 var vy := 0.0
 var air := false
 var pitch := 0.0                   # nose up +
+var wheelie := 0.0                 # the front wheel lifted: nose up + about the back tyre, on top of the ground's pitch
+var wheelie_rate := 0.0            # rad/s
 var lean := 0.0                    # to the left +: only ever the rider's doing
 var steer := 0.0                   # the bars, left +
 var throttle := 0.0
@@ -135,16 +146,18 @@ func level_transform() -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, yaw), pos)
 
 
-# The frame the rider rides in: the bike's own, every way it turns, pitches and leans (as the board carries the skater).
-# The bike's frame turned and pitched with it, but not leaned: the rider's own upright, which the rider's lean is measured from.
+# The bike's frame turned and pitched with it (the ground's pitch, and the front wheel lifted about the back tyre), but not leaned: the
+# rider's own upright, which the rider's lean is measured from.
 func upright_transform() -> Transform3D:
-	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos)
+	var base := Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos)
+	var rear := Vector3(0.0, REAR_RADIUS, WHEELBASE * 0.5)   # (the back axle, in the bike's frame: the front comes up about it, the tyre rolling on)
+	return base * Transform3D(Basis.IDENTITY, rear) * Transform3D(Basis(Vector3.RIGHT, wheelie), Vector3.ZERO) * Transform3D(Basis.IDENTITY, -rear)
 
 
+# The frame the rider rides in: the bike's own, every way it turns, pitches and leans.
 func ride_transform() -> Transform3D:
 	var pivot_up := Transform3D(Basis.IDENTITY, Vector3(0.0, LEAN_PIVOT, 0.0))
-	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch), pos) * pivot_up * Transform3D(Basis(Vector3.BACK, lean), Vector3.ZERO) \
-		* pivot_up.affine_inverse()
+	return upright_transform() * pivot_up * Transform3D(Basis(Vector3.BACK, lean), Vector3.ZERO) * pivot_up.affine_inverse()
 
 
 # Where the rider's head goes over (on the ground).
@@ -203,6 +216,15 @@ func update(c: Controls, dt: float) -> String:
 		if absf(speed) < PADDLE_SPEED * 1.2 and absf(c.paddle) > 0.2 and throttle < 0.05:
 			speed = move_toward(speed, c.paddle * PADDLE_SPEED, dt * 3.0)
 		yaw = wrapf(yaw + (speed * tan(steer) / WHEELBASE + lean_turn_rate()) * dt, -PI, PI)
+		# the front wheel: driven hard enough, the nose comes up about the back tyre
+		var nose := WHEELIE_LIFT * push - WHEELIE_WEIGHT * cos(wheelie + WHEELIE_TILT) / cos(WHEELIE_TILT) \
+			- WHEELIE_DAMP * wheelie_rate - clampf(c.brake, 0.0, 1.0) * WHEELIE_BRAKE
+		if wheelie > 0.0 or nose > 0.0:
+			wheelie_rate += nose * dt
+			wheelie += wheelie_rate * dt
+			if wheelie <= 0.0:
+				wheelie = 0.0   # (the front wheel is back on the ground)
+				wheelie_rate = 0.0
 	# where it goes
 	var along := forward() * signf(speed)
 	var step := absf(speed) * cos(pitch) * dt if not air else absf(speed) * dt
@@ -253,6 +275,8 @@ func update(c: Controls, dt: float) -> String:
 			speed *= 1.0 - clampf((last_impact - 4.0) * 0.04, 0.0, 0.4)   # (a heavy landing scrubs some speed)
 			happened = "land"
 	pos = next
+	if wheelie > WHEELIE_BAIL:
+		happened = "bail"
 	# how it looks
 	lean = clampf(c.lean, -lean_limit(), lean_limit())   # (exactly with the rider, every frame)
 	spin_front = wrapf(spin_front + speed / FRONT_RADIUS * dt, -PI, PI)   # (about the wheel's X: its top goes forward)
@@ -324,6 +348,18 @@ func update_grips() -> void:
 func _take_off() -> void:
 	air = true
 	speed *= cos(pitch)
+	pitch += wheelie   # (a front wheel still up as it leaves the ground goes on up: the nose it had is the nose it flies with)
+	wheelie = 0.0
+	wheelie_rate = 0.0
+
+
+# After a bail: stopped, the front wheel down, the throttle shut.
+func stop_dead() -> void:
+	speed = 0.0
+	throttle = 0.0
+	wheelie = 0.0
+	wheelie_rate = 0.0
+	apply()
 
 
 func _ground_y(at: Vector3, from_y: float):

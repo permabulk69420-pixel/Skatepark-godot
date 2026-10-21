@@ -805,6 +805,14 @@ func _process_bike(dt: float) -> void:
 	var happened := ride.update(dt, brake, paddle, throttle, steer)
 	hands.update(dt)
 	ride.place_hands()
+	if happened == "bail":
+		hud.say("BAIL", 1.5)
+		bike_sound.knock(9.0)
+		if haptics:
+			haptics.pulse(1.0, 150)
+		ride.bike.stop_dead()
+		_get_off_bike()
+		return
 	if happened == "land" or happened == "hit":
 		bike_sound.knock(ride.bike.last_impact)
 		if haptics:
@@ -822,7 +830,7 @@ func _process_bike(dt: float) -> void:
 	step_key_was = Input.is_key_pressed(KEY_Q)
 	var held := vr and right_controller.is_button_pressed("primary_click")
 	held_step_off = held_step_off + dt if held else 0.0
-	if (tapped or held_step_off > STEP_OFF_HOLD) and absf(ride.bike.speed) < 2.0 and not ride.bike.air:
+	if (tapped or held_step_off > STEP_OFF_HOLD) and absf(ride.bike.speed) < 2.0 and not ride.bike.air and ride.bike.wheelie < 0.05:
 		held_step_off = -1e9
 		_get_off_bike()
 
