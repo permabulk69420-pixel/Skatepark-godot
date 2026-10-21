@@ -151,24 +151,24 @@ static func steer_limit_at(at_speed: float) -> float:
 	return lerpf(STEER_LIMIT, STEER_LIMIT_FAST, clampf(absf(at_speed) / STEER_NARROWS, 0.0, 1.0))
 
 
-# The front wheel's angle for the angle the rider's hands hold the bars at: nothing near straight, then growing gently, and at speed a
-# full turn of the hands is only the narrowed lock.
+# The front wheel's angle for the angle the rider's hands hold the bars at: nothing near straight, then growing gently, up to the full
+# lock at any speed.
 static func hand_steer(bar: float, at_speed: float) -> float:
 	var x := clampf((absf(bar) - HAND_DEAD) / (STEER_LIMIT - HAND_DEAD), 0.0, 1.0)
-	return signf(bar) * pow(x, HAND_CURVE) * steer_limit_at(at_speed)
+	return signf(bar) * pow(x, HAND_CURVE) * STEER_LIMIT
 
 
 # One step. Returns what happened: "" or "land" / "hit" (how hard: `last_impact`, m/s) / "shift".
 func update(c: Controls, dt: float) -> String:
 	var happened := ""
-	throttle = move_toward(throttle, clampf(c.throttle, 0.0, 1.0), dt * 4.0)
+	throttle = move_toward(throttle, clampf(c.throttle, 0.0, 1.0), dt * 6.0)
 	# the bars
 	var limit := steer_limit()
 	if is_nan(c.steer_to):
 		var rate := STEER_RATE * lerpf(1.0, 0.35, clampf(absf(speed) / STEER_NARROWS, 0.0, 1.0))
 		steer = move_toward(steer, clampf(c.steer, -1.0, 1.0) * limit, dt * rate)
 	else:
-		steer = move_toward(steer, clampf(c.steer_to, -limit, limit), dt * HAND_STEER_RATE)
+		steer = move_toward(steer, clampf(c.steer_to, -STEER_LIMIT, STEER_LIMIT), dt * HAND_STEER_RATE)   # (the hands: the full lock at any speed)
 	# the engine and the box
 	var wheel_rpm: float = IDLE + (RED_LINE - IDLE) * absf(speed) / GEAR_TOPS[gear]
 	var want: float = wheel_rpm

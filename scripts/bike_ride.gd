@@ -15,8 +15,7 @@ const GRIP_REACH := 0.16           # a hand this close to a grip takes it when i
 const SQUEEZE_ON := 0.6
 const SQUEEZE_OFF := 0.35
 const TWIST_DEAD := deg_to_rad(4.0)     # twisting the right grip back: nothing for this much,
-const TWIST_FULL := deg_to_rad(65.0)    # full throttle at this much,
-const TWIST_CURVE := 1.6                # building up as this power of the way between (a little twist, a little throttle)
+const TWIST_FULL := deg_to_rad(50.0)    # full throttle at this much
 const BODY_DEAD := 0.03            # metres your head can be off the middle of the bike, side to side, without leaning it,
 const BODY_FULL := 0.22            # and this far is leaning all the way
 const STEP_OFF_SIDE := 0.75        # getting off puts you this far to the left of the bike
@@ -91,7 +90,7 @@ func body_lean() -> float:
 
 # Throttle from how far the right grip is twisted back.
 static func throttle_for(angle: float) -> float:
-	return pow(clampf((angle - TWIST_DEAD) / (TWIST_FULL - TWIST_DEAD), 0.0, 1.0), TWIST_CURVE)
+	return clampf((angle - TWIST_DEAD) / (TWIST_FULL - TWIST_DEAD), 0.0, 1.0)
 
 
 # The angle the rider's hands hold the bars at: the line from the left hand to the right, turned about the vertical in the frame the rider
