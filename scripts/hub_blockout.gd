@@ -1,9 +1,9 @@
-# A plain stand-in for the house, until the real model arrives. It is laid out exactly as the brief given to the modeller says
+# A plain stand-in for the house, until the real model arrives. It is laid out to the house's measurements
 # (one big room: lounge with the TV at the west end, skate shop with the board wall at the east end; a veranda and a ramp down to the
 # back yard; the empty slab where the half pipe goes), and it is read by the same code as an imported file: collision meshes named COL_,
 # empties carrying their role in "extras". When the real house is dropped in at the hub's file, nothing else has to change.
 #
-# Coordinates in this file are the brief's (x east, y north, z up, metres); `g` turns them into the engine's (x, up, -north).
+# Coordinates in this file are the house's (x east, y north, z up, metres); `g` turns them into the engine's (x, up, -north).
 class_name HubBlockout
 extends RefCounted
 
@@ -27,7 +27,7 @@ var _wall_faces := PackedVector3Array()
 var _materials := {}
 
 
-# The brief's coordinates to the engine's.
+# The house's coordinates to the engine's.
 static func g(x: float, y: float, z: float) -> Vector3:
 	return Vector3(x, z, -y)
 
@@ -47,7 +47,7 @@ func _material(color: Color) -> StandardMaterial3D:
 	return _materials[color]
 
 
-# A box: centre and size in the brief's axes. `kind` says what it is to the sim ("floor", "wall", or "" for looks only); `shown` false
+# A box: centre and size in the house's axes. `kind` says what it is to the sim ("floor", "wall", or "" for looks only); `shown` false
 # makes it collision only. `rotation` is in the engine's axes.
 func _box(c: Vector3, size: Vector3, color: Color, kind := "", shown := true, rotation := Basis.IDENTITY, node_name := "") -> void:
 	var s := Vector3(size.x, size.z, size.y)

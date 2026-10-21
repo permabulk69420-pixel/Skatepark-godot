@@ -32,13 +32,13 @@ func walk(move: Vector2, seconds: float) -> void:
 		t += 0.05
 
 
-# Stands the player at a spot given in the brief's coordinates (x east, y north) on the floor, facing a sim heading.
+# Stands the player at a spot given in the house's coordinates (x east, y north) on the floor, facing a sim heading.
 func stand(x: float, y: float, z: float, yaw: float) -> void:
 	main.foot.place(Vector3(x, z, -y), yaw)
 	main.foot.update(0.05, Vector2.ZERO, 0.0)
 
 
-func spot() -> Vector3:   # the player's position in the brief's coordinates
+func spot() -> Vector3:   # the player's position in the house's coordinates
 	var b: Vector3 = main.foot.body()
 	return Vector3(b.x, -b.z, b.y)
 

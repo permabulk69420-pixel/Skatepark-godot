@@ -88,7 +88,7 @@ def doors():
         require(clearsegment((a+.001,y,z),(b-.001,y,z)),'Obstructed doorway')
       # Measure actual jambs with rays from center, not only expected dimensions.
       c=Vector(((a+b)/2,y,1.3));left=wb.ray_cast(c,Vector((-1,0,0)),10);right=wb.ray_cast(c,Vector((1,0,0)),10)
-      width=left[3]+right[3];require(width>=1-1e-5,'Door less than 1m');require(abs(width-(b-a))<.002,'Doorway not exact brief width')
+      width=left[3]+right[3];require(width>=1-1e-5,'Door less than 1m');require(abs(width-(b-a))<.002,'Doorway not exact width')
     # Verify collision blocks each window even though render glass is absent.
     for x,y in [(-4.5,-4.6),(4.5,-4.6),(-5,4.6),(5.5,4.6)]:require(not clearsegment((x,y-.3,1.8),(x,y+.3,1.8)),'Window collision missing')
     return 'Front 1.100m × 2.100m; back 4.000m × 2.400m; four windows block collision'

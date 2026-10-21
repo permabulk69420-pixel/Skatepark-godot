@@ -2,7 +2,7 @@
 # link road south from it to a big oval loop. Inside the loop is open ground to build on. Painted lines: a dashed centre line, solid edge
 # lines, broken where roads meet.
 #
-# Coordinates in this file are the house brief's (x east, y north, metres); the engine's are (x, up, -y).
+# Coordinates in this file are the house's (x east, y north, metres); the engine's are (x, up, -y).
 class_name HubRoads
 extends RefCounted
 
@@ -180,7 +180,7 @@ static func _paint(st: SurfaceTool, line: Array[Vector2], closed: bool, offset: 
 		travelled += length
 
 
-# Two triangles facing up (corners given going round the quad in the brief's axes).
+# Two triangles facing up (corners given going round the quad in the house's axes).
 static func _quad(st: SurfaceTool, corners: Array, height: float, uv: bool) -> void:
 	for i in [0, 1, 2, 0, 2, 3]:
 		var p: Vector2 = corners[i]
