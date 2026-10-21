@@ -165,7 +165,7 @@ class Tuning:
 
 	# In the air the board keeps the tilt it left the surface with (come out of a wall vertical and you stay vertical) and
 	# eases towards whatever it is about to land on, faster the closer that gets.
-	const airTiltFar := 0.9  # 1/s while far from anything
+	const airTiltFar := 0.0  # 1/s while far from anything: the tilt you left the surface with is held (it was 0.9, which levelled you out at height)
 	const airTiltNear := 7.0  # 1/s as the landing surface gets close
 	const airTiltReach := 3.0  # metres below which "close" starts
 
