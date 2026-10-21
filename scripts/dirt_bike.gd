@@ -17,6 +17,9 @@ const WHEELBASE := 1.49
 const FRONT_RADIUS := 0.355
 const REAR_RADIUS := 0.338
 const PEG_HEIGHT := 0.413          # the footpegs above the ground
+# Each rubber grip's own axis (it is swept back off the straight line between them), in the frame of the model's grip empties: measured
+# from the model, through the middle of the grip, where the empty is.
+const GRIP_AXES := {"Right_Grip": Vector3(0.990, 0.039, -0.132), "Left_Grip": Vector3(0.989, -0.045, 0.142)}
 const RIDER := Vector3(0.0, 0.0, 0.12)   # where the rider's head is over, in the bike's frame (just behind the middle)
 const STEER_LIMIT := deg_to_rad(35.0)    # (the model's own suggestion) at a walk,
 const STEER_LIMIT_FAST := deg_to_rad(5.0)   # narrowing to this at speed
@@ -270,16 +273,14 @@ func apply() -> void:
 	update_grips()
 
 
-# The grip markers follow the grips, square to the bar and upright, whichever way the model's own empties happen to be turned.
+# The grip markers follow the grips: on the middle of each, its X along that grip's own axis, its Y as near upright as that allows.
 func update_grips() -> void:
-	var left: Vector3 = (grip_nodes.left as Node3D).global_position
-	var right: Vector3 = (grip_nodes.right as Node3D).global_position
-	var bar := (right - left).normalized()
-	var up := node.global_basis.y
-	up = (up - bar * up.dot(bar)).normalized()
-	var basis := Basis(bar, up, bar.cross(up))
-	(grip_markers.left as Node3D).global_transform = Transform3D(basis, left)
-	(grip_markers.right as Node3D).global_transform = Transform3D(basis, right)
+	for side in ["left", "right"]:
+		var grip: Node3D = grip_nodes[side]
+		var along: Vector3 = (grip.global_basis * GRIP_AXES.get(String(grip.name), Vector3.RIGHT)).normalized()
+		var up := node.global_basis.y
+		up = (up - along * up.dot(along)).normalized()
+		(grip_markers[side] as Node3D).global_transform = Transform3D(Basis(along, up, along.cross(up)), grip.global_position)
 
 
 # Into the air: from here on it carries on with the speed it had along the ground, split into across and up.

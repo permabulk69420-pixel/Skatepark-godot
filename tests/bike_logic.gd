@@ -38,6 +38,21 @@ func ride(seconds: float, throttle: float, brake := 0.0, steer := 0.0) -> Array:
 	return events
 
 
+# How many of the hand's skin points (as posed now) are inside the grip's rubber (a 3.7 cm tube along the marker's X, its middle 10 cm),
+# by more than a millimetre.
+func grip_skin_inside(model: HandModel, marker: Node3D) -> int:
+	if model.verts.is_empty():
+		model.prepare_skinning()
+	var m := model.skin_matrices()
+	var to_grip := marker.global_transform.affine_inverse() * model.skeleton.global_transform
+	var count := 0
+	for i in model.verts.size():
+		var p := to_grip * model.skinned_vertex(i, m)
+		if absf(p.x) < 0.05 and Vector2(p.y, p.z).length() < 0.0185 - 0.001:
+			count += 1
+	return count
+
+
 func put(bike: DirtBike, at: Vector3, yaw: float) -> void:
 	bike.pos = at
 	bike.yaw = yaw
@@ -236,6 +251,22 @@ func run() -> void:
 	check(vr_ride.holding("left") and vr_ride.holding("right"), "squeezing a grip with a hand on it takes hold")
 	var socket := hand_r.model.socket_global().origin
 	check(socket.distance_to(bike.grip_markers.right.global_position) < 0.06, "the right hand closes on its grip (%.3f m off)" % socket.distance_to(bike.grip_markers.right.global_position))
+	# the fingers close round the rubber, not through it (the skin, skinned as it is posed, against each grip's tube)
+	for k in 12:
+		vr_hands.update(DT)
+		vr_ride.place_hands()
+	for pair in [[hand_l, "left"], [hand_r, "right"]]:
+		var state: VrHands.HandState = pair[0]
+		var marker: Node3D = bike.grip_markers[pair[1]]
+		var inside := grip_skin_inside(state.model, marker)
+		check(inside == 0, "the %s hand wraps its grip without going into it (%d skin points inside)" % [pair[1], inside])
+	# and it stays on the middle of the grip: the hand moved along the bar does not slide the hand along it
+	var held_at: Vector3 = hand_r.model.socket_global().origin
+	right.global_position += bike.grip_markers.right.global_basis.x * 0.03
+	vr_hands.update(DT)
+	vr_ride.place_hands()
+	check(hand_r.model.socket_global().origin.distance_to(held_at) < 0.003, "moving the hand along the bar does not slide it along the grip")
+	right.global_position -= bike.grip_markers.right.global_basis.x * 0.03
 	check(vr_ride.controls.throttle == 0.0, "holding it as you took it is no throttle")
 	var level_basis := Basis(Vector3.UP, bike.yaw)
 	right.global_basis = Basis(level_basis * Vector3.RIGHT, deg_to_rad(40.0)) * right.global_basis   # (back: the top of the grip towards you)

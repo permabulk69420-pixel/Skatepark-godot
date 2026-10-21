@@ -12,6 +12,7 @@ extends RefCounted
 const MOUNT_REACH := 0.5           # metres: your feet this close (across) to the middle of the pegs gets you on
 const MOUNT_HEIGHT := 0.6          # and about level with the ground it stands on
 const GRIP_REACH := 0.16           # a hand this close to a grip takes it when it squeezes
+const BAR_GRIP := "res://assets/hands/bar_grip_solution.json"   # how each hand closes round a grip (tools/solve_bar_grip.gd)
 const SQUEEZE_ON := 0.6
 const SQUEEZE_OFF := 0.35
 const TWIST_DEAD := deg_to_rad(4.0)     # twisting the right grip back: nothing for this much,
@@ -28,7 +29,9 @@ var camera: Camera3D
 var hands: VrHands
 var vr: bool
 var hold := HandleHold.new()
-var grips := {}                    # "left" / "right" -> { state, from: the hand's turn in the bike's frame when it took hold }
+var grips := {}                    # "left" / "right" -> { state, from: the hand's turn in the bike's frame when it took hold, board: what
+                                   # the hand had for holding the board (put back when it lets go) }
+static var bar_grip = null         # the solution, read once
 var rig_rel := Transform3D.IDENTITY   # the rig in the bike's level frame (headset)
 var twist := 0.0                   # how far the right grip is twisted back (radians)
 var look_yaw := 0.0                # a flat screen: dragging to look about
@@ -125,17 +128,39 @@ func _update_grips() -> void:
 		var marker: Node3D = bike.grip_markers[side]
 		if not held and squeezing and state.tracked() and not state.held:
 			if hold.real_socket(state).distance_to(marker.global_position) < GRIP_REACH:
-				var handle := {"node": marker, "axis": Vector3.RIGHT, "halfLength": 0.04}
+				# (held at the middle of the grip: it does not slide along it)
+				var handle := {"node": marker, "axis": Vector3.RIGHT, "halfLength": 0.0}
 				if hold.grab(state, handle):
-					state.held_pose = VrHands.GRIP_POSES["thin"]
-					grips[side] = {"state": state, "from": frame * state.controller.global_basis.get_rotation_quaternion()}
+					grips[side] = {"state": state, "from": frame * state.controller.global_basis.get_rotation_quaternion(),
+						"board": {"offset": state.bar_offset, "paths": state.paths}}
+					_fit_to_grip(state)
 		elif held and not squeezing:
-			hold.release(state)
-			grips.erase(side)
+			_let_go(side)
 	twist = 0.0
 	if grips.has("right"):
 		var right: VrHands.HandState = grips.right.state
 		twist = twist_about_bar(grips.right.from, frame * right.controller.global_basis.get_rotation_quaternion())
+
+
+# The hand closes round a round grip, not the board's thin edge: the grip's place in the hand and the fingers' paths from the bar-grip
+# solution (the fingers stop at the rubber instead of closing through it).
+func _fit_to_grip(state: VrHands.HandState) -> void:
+	if bar_grip == null and FileAccess.file_exists(BAR_GRIP):
+		bar_grip = JSON.parse_string(FileAccess.get_file_as_string(BAR_GRIP))
+	if bar_grip == null or not (bar_grip as Dictionary).has(state.handedness):
+		return
+	var mine: Dictionary = bar_grip[state.handedness]
+	state.bar_offset = Vector3(mine.bar_offset[0], mine.bar_offset[1], mine.bar_offset[2])
+	state.paths = mine.fingers
+	state.path_elapsed = 0.0
+
+
+func _let_go(side: String) -> void:
+	var state: VrHands.HandState = grips[side].state
+	hold.release(state)
+	state.bar_offset = grips[side].board.offset
+	state.paths = grips[side].board.paths
+	grips.erase(side)
 
 
 # After the hands have posed: each holding hand onto its grip.
@@ -151,8 +176,7 @@ func holding(side: String) -> bool:
 # Getting off: the hands let go. Returns where to stand (beside the bike, on its left) and which way to face.
 func end() -> Dictionary:
 	for side in grips.keys():
-		hold.release(grips[side].state)
-	grips.clear()
+		_let_go(side)
 	var level := bike.level_transform()
 	return {"pos": level * Vector3(-STEP_OFF_SIDE, 0.0, 0.1), "yaw": bike.yaw}
 
