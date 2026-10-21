@@ -286,6 +286,19 @@ func run() -> void:
 	vr_ride.update(DT, 0.0, 0.0)
 	check(vr_ride.controls.steer_to > 0.2, "pushing the right hand forward and pulling the left back turns the bars left (%.2f)" % vr_ride.controls.steer_to)
 	var upright_head := fake_camera.transform
+	# no lag: tilting the head a degree more every frame, from upright to 30 degrees, the bike leans with it on every frame, the first included
+	var worst := 0.0
+	var log_line := ""
+	for degree in range(0, 31):
+		fake_camera.transform.basis = Basis(Vector3.BACK, deg_to_rad(float(degree))) * upright_head.basis
+		vr_ride.update(DT, 0.0, 0.0)
+		worst = maxf(worst, absf(bike.lean - deg_to_rad(float(degree))))
+		if degree in [1, 2, 5, 10, 15, 20, 30]:
+			log_line += "  head %d -> bike %.2f" % [degree, rad_to_deg(bike.lean)]
+	print("       frame by frame:" + log_line)
+	check(worst < deg_to_rad(0.01), "frame by frame the bike leans exactly as far as the head tilts, from the first frame (worst %.4f degrees off)" % rad_to_deg(worst))
+	fake_camera.transform = upright_head
+	vr_ride.update(DT, 0.0, 0.0)
 	fake_camera.transform.basis = Basis(Vector3.BACK, deg_to_rad(15.0)) * upright_head.basis   # (the head tilted 15 degrees to the left)
 	vr_ride.update(DT, 0.0, 0.0)
 	check(absf(vr_ride.controls.lean - deg_to_rad(15.0)) < 0.002, "the headset tilted 15 degrees left of the bike's middle leans it 15 degrees left (%.1f)" % rad_to_deg(vr_ride.controls.lean))
