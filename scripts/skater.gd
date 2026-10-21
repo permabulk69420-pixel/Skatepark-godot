@@ -1342,6 +1342,11 @@ func land(has_normal: bool, normal: Vector3) -> void:
 	else:
 		ground_normal = UP
 	var n := ground_normal
+	# The board has to come down the right way up: tilted further than this off the surface and it is a slam. (`up` is the tilt it left
+	# the surface with, eased towards what it is about to land on, so only a landing that is still well off at touchdown counts.)
+	if acos(clampf(up.dot(n), -1.0, 1.0)) > T.landMaxTilt:
+		bail("landing")
+		return
 	var impact := maxf(0.0, -vel.dot(n))
 	var tmp := vel + n * (-vel.dot(n))
 	var flat_speed := tmp.length()

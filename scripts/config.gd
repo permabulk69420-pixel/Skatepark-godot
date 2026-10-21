@@ -89,6 +89,7 @@ class Tuning:
 	const wallEventSpeed := 0.7  # below this a bump makes no noise
 	const landMaxAngle := 0.78  # rad (45°) board-vs-travel misalignment that still lands
 	const landAngleMinSpeed := 3.0
+	const landMaxTilt := 0.78  # rad (45°): a board still tilted further than this off the surface it lands on (on its side, upside down) bails
 	const wallLandFrom := 0.9  # surfaces steeper than this (normal y) are ridden when you land on them…
 	const wallLandSpan := 0.5  # …fully by this much steeper
 	const wallLandKeep := 0.75  # share of the speed that would have gone into the wall that carries on down it
