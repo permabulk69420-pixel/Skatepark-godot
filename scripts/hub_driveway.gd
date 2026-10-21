@@ -1,5 +1,5 @@
-# A paved route beside the west wall, from the open front gate to the ramp slab.
-# The house stays in its original GLB; only the boundary meshes are substituted.
+# A paved route beside the west wall, from the open front gate to the back yard, which is paved from the back of the house to the fences
+# (over the old ramp slab, which is taken out). The house stays in its original GLB; only the boundary meshes are substituted.
 class_name HubDriveway
 extends RefCounted
 
@@ -8,12 +8,14 @@ const HEIGHT := 0.004
 const GATE_X := -12.5
 const GATE_Z := 12.0
 const OPENING := 5.2
+const YARD := Rect2(-19.8, 10.8, 39.6, 19.0)   # the paved back yard: fence to fence, from the back of the house to the back fence
 const OUTLINE := [
 	Vector2(-14.9, -18.0), Vector2(-10.1, -18.0),
-	Vector2(-10.1, 8.8), Vector2(-8.1, 10.8), Vector2(2.8, 10.8),
-	Vector2(2.8, 15.0), Vector2(-7.0, 15.0),
-	Vector2(-7.0, 19.5), Vector2(-14.9, 19.5),
+	Vector2(-10.1, 8.8), Vector2(-8.1, 10.8), Vector2(19.8, 10.8),
+	Vector2(19.8, 29.8), Vector2(-19.8, 29.8),
+	Vector2(-19.8, 10.8), Vector2(-14.9, 10.8),
 ]
+const JOINT_PITCH := 3.0
 
 
 static func add_to(root: Node3D) -> bool:
@@ -29,6 +31,10 @@ static func add_to(root: Node3D) -> bool:
 	fence.material_override = timber
 	walls.mesh = cut_walls.mesh
 	source.free()
+	var slab := root.find_child("Ground_Concrete_Worn_Shop", true, false)
+	if slab != null:
+		slab.get_parent().remove_child(slab)   # (the paving covers it; its collision, part of COL_Floors, lies flush under the paving)
+		slab.free()
 
 	var driveway := Node3D.new()
 	driveway.name = "Driveway"
@@ -73,9 +79,15 @@ static func add_to(root: Node3D) -> bool:
 	joints.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for north in range(-15, 11, 3):
 		_box(joints, Vector3(-12.5, HEIGHT + 0.0005, -north), Vector3(4.8, 0.001, 0.014))
-	for x in [-11.5, -8.5, -5.5, -2.5, 0.5]:
-		_box(joints, Vector3(x, HEIGHT + 0.0005, -12.9), Vector3(0.014, 0.001, 4.2))
-	_box(joints, Vector3(-10.95, HEIGHT + 0.0005, -16.5), Vector3(7.9, 0.001, 0.014))
+	# the yard in 3 m bays, lined up with the joints across the drive
+	var east := 0.5 - JOINT_PITCH * floorf((0.5 - YARD.position.x) / JOINT_PITCH)
+	while east < YARD.end.x - 0.5:
+		_box(joints, Vector3(east, HEIGHT + 0.0005, -YARD.get_center().y), Vector3(0.014, 0.001, YARD.size.y))
+		east += JOINT_PITCH
+	var line_north := JOINT_PITCH * ceilf(YARD.position.y / JOINT_PITCH)
+	while line_north < YARD.end.y - 0.5:
+		_box(joints, Vector3(YARD.get_center().x, HEIGHT + 0.0005, -line_north), Vector3(YARD.size.x, 0.001, 0.014))
+		line_north += JOINT_PITCH
 	var joint_material := StandardMaterial3D.new()
 	joint_material.albedo_color = Color("6c6961")
 	joint_material.roughness = 1.0

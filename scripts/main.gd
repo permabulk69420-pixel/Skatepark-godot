@@ -489,6 +489,7 @@ func _process_build(dt: float) -> void:
 	var grab_down := false
 	var turn_axis := 0.0
 	var remove_down := false
+	var fine := false
 	if vr:
 		move = left_controller.get_vector2("primary")
 		turn_axis = right_controller.get_vector2("primary").x
@@ -496,18 +497,20 @@ func _process_build(dt: float) -> void:
 		pointer = aim_controller if aim_controller.get_has_tracking_data() else right_controller
 		grab_down = right_controller.is_button_pressed("trigger_click")
 		remove_down = right_controller.is_button_pressed("by_button")
+		fine = right_controller.is_button_pressed("grip_click")
 	else:
 		move = Vector2(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
 		grab_down = Input.is_key_pressed(KEY_E)
 		turn_axis = float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT))
 		remove_down = Input.is_key_pressed(KEY_X) or Input.is_key_pressed(KEY_DELETE)
+		fine = Input.is_key_pressed(KEY_SHIFT)
 	foot.update(dt, move, turn)
 	hands.update(dt)
-	var happened := build.update(pointer.global_position, -pointer.global_basis.z, grab_down, turn_axis, remove_down)
+	var happened := build.update(pointer.global_position, -pointer.global_basis.z, grab_down, turn_axis, remove_down, fine, dt)
 	var target := build.held if build.held != null else build.hovered
 	match happened:
 		"picked":
-			hud.say("Carrying the %s · E puts it down · arrows turn it · X removes it" % build.piece_name(target).to_lower(), 2.5)
+			hud.say("Carrying the %s · E puts it down · arrows turn it · hold Shift for fine control · X removes it" % build.piece_name(target).to_lower(), 2.5)
 		"placed":
 			hud.say("Put down · M: Done saves it", 2.0)
 		"removed":
@@ -633,8 +636,11 @@ func _on_board_released(pose: Transform3D, velocity: Vector3, spin: Vector3) -> 
 	prop_apart = 0.0
 
 
-# May this hand pick up the board? Not if it is holding the remote, or is by the remote and about to.
+# May this hand pick up the board? Not if it is holding the remote, or is by the remote and about to, or while building (the grip is
+# fine control there).
 func _may_carry(state: VrHands.HandState) -> bool:
+	if build != null and build.active:
+		return false
 	if hub != null and hub.tv != null:
 		if hub.tv.holder == state.handedness:
 			return false

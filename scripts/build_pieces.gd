@@ -4,7 +4,7 @@
 class_name BuildPieces
 extends RefCounted
 
-const META := "build_piece"            # on each piece's node: {"id", "kind" ("" for the house's own), "name", "colliders"}
+const META := "build_piece"            # on each piece's node: {"id", "kind" ("" for the house's own), "name", "colliders", "frame_yaw"}
 const ADDABLE := ["arcade", "rail"]
 const ARCADE_SCENE := "res://assets/arcade/arcade_machine.glb"
 const RAIL_LENGTH := 3.0
@@ -24,20 +24,32 @@ static func caption(kind: String) -> String:
 
 # Marks the house's own movable things (`root`: the house, before it is loaded). The couch's collision box is part of COL_Walls in the
 # house file, so it is cut out of there and given to the couch.
+# Each one stands square to the house where the house puts it, though its node may be turned (the couch's is, by 14°, with its mesh
+# turned back the other way): its "frame_yaw" turns the node's frame back to square, and its box and its turns are worked out in that.
 static func mark_house(root: Node3D) -> void:
 	var ramp := root.find_child("HalfPipe", true, false) as Node3D
 	if ramp != null:
-		_mark(ramp, "halfpipe", "", "Half pipe", ["COL_WoodenHalfPipe"])
+		_mark(ramp, "halfpipe", "", "Half pipe", ["COL_WoodenHalfPipe"], -yaw_of(_to_root(ramp, root).basis))
 	var couch := root.find_child("Interior_Couch", true, false) as MeshInstance3D
 	if couch != null:
-		_mark(couch, "couch", "", "Couch", ["COL_Couch"] if _split_couch(root, couch) else [])
+		_mark(couch, "couch", "", "Couch", ["COL_Couch"] if _split_couch(root, couch) else [], -yaw_of(_to_root(couch, root).basis))
 	var rug := root.find_child("Interior_Rug", true, false) as Node3D
 	if rug != null:
-		_mark(rug, "rug", "", "Rug", [])
+		_mark(rug, "rug", "", "Rug", [], -yaw_of(_to_root(rug, root).basis))
 
 
-static func _mark(node: Node3D, id: String, kind: String, title: String, colliders: Array) -> void:
-	node.set_meta(META, {"id": id, "kind": kind, "name": title, "colliders": colliders})
+static func _mark(node: Node3D, id: String, kind: String, title: String, colliders: Array, frame_yaw := 0.0) -> void:
+	node.set_meta(META, {"id": id, "kind": kind, "name": title, "colliders": colliders, "frame_yaw": frame_yaw})
+
+
+# How far a basis is turned about the vertical (0: its +Z points along +Z).
+static func yaw_of(basis: Basis) -> float:
+	return atan2(basis.z.x, basis.z.z)
+
+
+# The piece's square frame, relative to its node.
+static func frame(piece: Node3D) -> Basis:
+	return Basis(Vector3.UP, info(piece).get("frame_yaw", 0.0))
 
 
 # Every piece under `root`.
@@ -66,7 +78,7 @@ static func make(kind: String, id: String) -> Node3D:
 		"arcade":
 			var model := (load(ARCADE_SCENE) as PackedScene).instantiate() as Node3D
 			piece.add_child(model)
-			var box := bounds(piece)
+			var box := bounds(piece, Basis.IDENTITY)
 			var collider := _collision_mesh("COL_Build_" + id, _box_faces(box))
 			piece.add_child(collider)
 			colliders.append(collider.name)
@@ -119,17 +131,25 @@ static func _add_mesh(parent: Node3D, node_name: String, mesh: Mesh, material: M
 	parent.add_child(mi, true)
 
 
-# The box around everything you can see of `piece`, in the piece's own frame (works before it is in the tree).
-static func bounds(piece: Node3D) -> AABB:
+# The box around everything you can see of `piece`, in its square frame (`square`: that frame relative to the node; works before it is in
+# the tree). A mesh turned against the frame is measured by its corners, so the box stays tight.
+static func bounds(piece: Node3D, square: Basis) -> AABB:
 	var box := AABB()
 	var first := true
-	var stack: Array = [[piece, Transform3D.IDENTITY]]
+	var stack: Array = [[piece, Transform3D(square.inverse())]]
 	while not stack.is_empty():
 		var item: Array = stack.pop_back()
 		var node: Node = item[0]
 		var xf: Transform3D = item[1]
 		if node is MeshInstance3D and not node.name.begins_with("COL_") and (node as MeshInstance3D).mesh != null:
-			var part: AABB = xf * (node as MeshInstance3D).get_aabb()
+			var mesh := (node as MeshInstance3D).mesh
+			var part: AABB = xf * mesh.get_aabb()
+			if not xf.basis.is_equal_approx(Basis.IDENTITY):
+				var faces := mesh.get_faces()
+				if not faces.is_empty():
+					part = AABB(xf * faces[0], Vector3.ZERO)
+					for v in faces:
+						part = part.expand(xf * v)
 			box = part if first else box.merge(part)
 			first = false
 		for child in node.get_children():

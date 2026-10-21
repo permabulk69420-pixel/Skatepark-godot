@@ -52,12 +52,14 @@ func run() -> void:
 		check(not hit.is_empty() and absf(hit.position.y) < 0.002,
 			"Exterior dirt is solid at %s" % p)
 	for p in [Vector2(-12.5, -17.5), Vector2(-12.5, -12.0), Vector2(-12.5, 0.0),
-		Vector2(-12.5, 10.0), Vector2(-10, 13), Vector2(-5, 13), Vector2(1, 14.5), Vector2(-8, 18)]:
+		Vector2(-12.5, 10.0), Vector2(-10, 13), Vector2(-5, 13), Vector2(1, 14.5), Vector2(-8, 18),
+		Vector2(8.5, 20), Vector2(15, 12), Vector2(18, 28), Vector2(-18, 28), Vector2(-18, 12)]:
 		var query := PhysicsRayQueryParameters3D.create(Vector3(p.x, 2, -p.y), Vector3(p.x, -1, -p.y))
 		query.hit_back_faces = false
 		var hit := space.intersect_ray(query)
 		check(not hit.is_empty() and absf(hit.position.y - HubDriveway.HEIGHT) < 0.002,
 			"Driveway has upward-facing collision at %s" % p)
+	check(main.level.root.find_child("Ground_Concrete_Worn_Shop", true, false) == null, "The old ramp slab is gone under the paved yard")
 	# Each open leaf must be solid, while its full extent stays out of the opening.
 	for label in ["OpenGate_Left", "OpenGate_Right"]:
 		var marker := driveway.get_node(label) as Marker3D

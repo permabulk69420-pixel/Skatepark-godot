@@ -24,7 +24,7 @@ const TEXT_DIM := Color("7f9298")
 const ROW_HEIGHT := 56
 const FONT := 32
 const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "build_done", "build_cancel", "build_reset"]
-const BUILD_HINT := "Trigger: pick up / put down · stick: turn it · B: remove an added piece\nOn a flat screen: E, the arrow keys, X"
+const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove an added piece\nFlat screen: E, the arrow keys, Shift, X"
 
 var is_open := false
 var root: Node3D

@@ -39,8 +39,8 @@ func piece(id: String) -> Node3D:
 
 
 # Points straight down at (x, z) from above the floor.
-func point(x: float, z: float, grab := false, turn := 0.0, remove := false) -> String:
-	return main.build.update(Vector3(x, 2.5, z), Vector3.DOWN, grab, turn, remove)
+func point(x: float, z: float, grab := false, turn := 0.0, remove := false, fine := false) -> String:
+	return main.build.update(Vector3(x, 2.5, z), Vector3.DOWN, grab, turn, remove, fine)
 
 
 # Picks up whatever is at `from`, carries it to `to` and puts it down.
@@ -88,6 +88,10 @@ func run() -> void:
 	check(absf(floor_at(-4.5, -3.0) - 0.3) < 0.02 and absf(floor_at(2.0, -12.0)) < 0.05 and absf(floor_at(5.0, 3.0) - 0.3) < 0.02,
 		"the spots used below are open floor (%.2f, %.2f, %.2f)" % [floor_at(-4.5, -3.0), floor_at(2.0, -12.0), floor_at(5.0, 3.0)])
 
+	var couch_box: AABB = build.boxes[couch]
+	var couch_centre: Vector3 = build.box_transform(couch) * couch_box.get_center()
+	check(couch_box.size.x < 1.1 and couch_box.size.z < 2.4 and Vector2(couch_centre.x + 2.65, couch_centre.z).length() < 0.15,
+		"the couch's box fits the couch, square to the room (%s, centre %s)" % [couch_box.size, couch_centre])
 	main.set_process(false)   # (the test drives build mode itself)
 	main._on_menu_chosen("build")
 	check(build.active and main.watch_menu.building, "the menu's Build mode starts it, and the menu turns to the build page")
@@ -121,9 +125,11 @@ func run() -> void:
 	point(-4.5, -3.0)
 
 	# add a rail in the yard and an arcade machine in the shop
+	main.foot.look_yaw = 0.4   # (facing a little off straight)
 	main._on_menu_chosen("add_rail")
 	var rail: Node3D = build.held
 	check(rail != null and BuildPieces.info(rail).kind == "rail", "Add a flat rail puts one in your hand")
+	check(absf(BuildPieces.yaw_of(rail.global_basis)) < 0.001, "it comes square to the yard, though you are not quite facing straight")
 	point(2.0, -12.0)
 	check(point(2.0, -12.0, true) == "placed" and rail.global_position.distance_to(Vector3(2.0, 0.0, -12.0)) < 0.05, "and it goes down in the yard (%s)" % rail.global_position)
 	point(2.0, -12.0)
@@ -132,6 +138,23 @@ func run() -> void:
 	point(5.0, 3.0)
 	check(point(5.0, 3.0, true) == "placed" and arcade.global_position.distance_to(Vector3(5.0, 0.3, 3.0)) < 0.02, "an arcade machine goes down in the shop (%s)" % arcade.global_position)
 	point(5.0, 3.0)
+
+	# fine control (the grip held): a quarter of the pointer's movement, on a 1 cm grid, and the stick turns it smoothly
+	point(5.0, 3.0, true)
+	point(5.0, 3.0, false, 0.0, false, true)
+	point(5.42, 3.0, false, 0.0, false, true)
+	check(arcade.global_position.distance_to(Vector3(5.11, 0.3, 3.0)) < 0.001, "in fine control it moves a quarter as far as the pointer, to the centimetre (%s)" % arcade.global_position)
+	var yaw_before := BuildPieces.yaw_of(arcade.global_basis)
+	main.build.update(Vector3(5.42, 2.5, 3.0), Vector3.DOWN, false, 1.0, false, true, 0.1)
+	var fine_turn := angle_difference(yaw_before, BuildPieces.yaw_of(arcade.global_basis))
+	check(absf(fine_turn + BuildMode.FINE_TURN * 0.1) < 0.001, "and the stick turns it a little at a time (%.1f degrees)" % rad_to_deg(fine_turn))
+	point(5.42, 3.0, false, 0.0, false, false)
+	point(5.42, 3.0, false, 1.0, false, false)
+	var squared := BuildPieces.yaw_of(arcade.global_basis) / BuildMode.TURN_STEP
+	check(absf(squared - roundf(squared)) < 0.001, "a flick afterwards lands it back on a whole 15 degrees (%.1f)" % rad_to_deg(BuildPieces.yaw_of(arcade.global_basis)))
+	point(5.42, 3.0, false, 0.0)
+	check(point(5.42, 3.0, true) == "placed" and arcade.global_position.distance_to(Vector3(5.0, 0.3, 3.0)) < 0.02, "out of fine control it goes back on the grid (%s)" % arcade.global_position)
+	point(5.42, 3.0)
 	main._on_menu_chosen("add_rail")
 	var spare: Node3D = build.held
 	point(0.0, -12.0)
@@ -181,7 +204,7 @@ func run() -> void:
 	var rail_mesh := piece("rail_1").find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
 	check(arcade_mesh.layers == Hub.INDOOR_LAYER and rail_mesh.layers == 1, "the arcade machine is lit as indoors, the rail in the yard by the sun")
 	main.foot.update(0.05, Vector2.ZERO, 0.0)
-	walk(Vector2(0, 1), 3.0)
+	walk(Vector2(0, 1), 0.9)   # (long enough to reach it; much longer and you slide off round its turned side, as you should)
 	var at: Vector3 = main.foot.body()
 	check(at.x > 3.6 and at.x < 4.7, "walking into the arcade machine stops you (x %.2f)" % at.x)
 
