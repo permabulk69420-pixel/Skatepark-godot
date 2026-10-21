@@ -641,7 +641,7 @@ func _board_on_foot(dt: float, catch_pressed: bool) -> void:
 			_drop_board_in_front(foot.body(), foot.facing())
 		pose = prop.transform()
 	board_view.show_at(world, pose)
-	carry.place()                  # (the holding hand is fitted onto the board after the hands have posed)
+	carry.place()                  # (the board fits the tracked hand; carrying never rotates the visible wrist)
 	if catch_pressed and not detach_foot_was and carry.holding() and foot.air:
 		_catch_from_foot(pose)
 	detach_foot_was = catch_pressed

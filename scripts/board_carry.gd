@@ -2,8 +2,9 @@
 # follows that hand exactly (turn your wrist and it turns with it) until you let go, and what the hand was doing when you let go is what
 # it does next: let it drop and it falls, swing and let go and it is thrown (board_prop.gd takes over from there).
 #
-# It stays turned the way it was lying, with your hand fitted onto the edge you took hold of (the same fit the grabs in the air use), so
-# the nose, the tail and the sides all work the same way.
+# The board eases into the tracked hand's grip, then follows that wrist. The grip
+# geometry is shared with aerial grabs, but carrying never turns the visible wrist
+# away from the controller. Nose, tail and both side edges use the same fit.
 class_name BoardCarry
 extends RefCounted
 
@@ -65,10 +66,12 @@ func update(dt: float, pose: Transform3D, allow: Callable) -> Transform3D:
 	return (held.from as Transform3D).interpolate_with(target, k)
 
 
-# After the board has been moved to that pose and the hands have posed: fit the hand onto what it is holding.
+# Keep the wrist at its tracked pose while the board eases into it. Aerial grabs
+# still fit the hand to the board in BoardGrab.place(); carrying does the reverse.
 func place() -> void:
 	if held != null:
-		hold.place(held.state)
+		var state: VrHands.HandState = held.state
+		state.anchor.transform = state.home
 
 
 # Let go without throwing (the board is being put somewhere else: stepped onto, say).
@@ -100,10 +103,12 @@ func _pick(state: VrHands.HandState, pose: Transform3D) -> void:
 	if not hold.grab(state, handle):
 		_free_marker(marker)
 		return
-	var socket_world: Transform3D = state.model.socket_global()
-	var turn := socket_world.basis.inverse() * pose.basis
-	var in_socket := Transform3D(turn, state.bar_offset - turn * (pick.point as Vector3))
-	var target := socket_world * in_socket
+	# Solve the same edge/plate fit as a grab, then apply its inverse to the board.
+	# This temporary hand transform is restored before returning or rendering.
+	var tracked_hand := state.anchor.global_transform
+	hold.place(state)
+	var target := tracked_hand * state.anchor.global_transform.affine_inverse() * pose
+	state.anchor.transform = state.home
 	held = {
 		"state": state, "part": pick.part, "marker": marker,
 		"rel": state.controller.global_transform.affine_inverse() * target,
