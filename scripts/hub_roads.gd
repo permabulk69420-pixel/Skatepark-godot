@@ -36,15 +36,12 @@ static func add_to(root: Node3D) -> void:
 	roads.name = "Roads"
 	root.add_child(roads)
 
-	var asphalt := StandardMaterial3D.new()
-	asphalt.albedo_texture = load(ASSETS + "asphalt_albedo.jpg")
-	asphalt.roughness_texture = load(ASSETS + "asphalt_arm.jpg")
-	asphalt.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
-	asphalt.roughness = 1.0
-	asphalt.normal_enabled = true
-	asphalt.normal_texture = load(ASSETS + "asphalt_normal.jpg")
-	asphalt.normal_scale = 0.5
-	asphalt.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	var asphalt := ShaderMaterial.new()
+	asphalt.shader = load("res://shaders/road.gdshader")
+	asphalt.set_shader_parameter("albedo_texture", load(ASSETS + "asphalt_albedo.jpg"))
+	asphalt.set_shader_parameter("normal_texture", load(ASSETS + "asphalt_normal.jpg"))
+	asphalt.set_shader_parameter("arm_texture", load(ASSETS + "asphalt_arm.jpg"))
+	asphalt.set_shader_parameter("tile", TEXTURE_SIZE)
 	var paint := StandardMaterial3D.new()
 	paint.albedo_color = Color("e4e0d4")
 	paint.roughness = 0.75

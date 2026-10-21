@@ -1,5 +1,5 @@
 # Riding a dirt bike: you, the bike, and your hands on its bars. Walk up to a bike to get on (it is the same as stepping on the board); in
-# the headset you stand on its pegs, bolted to it as you are to the board: you turn, pitch and lean with it.
+# the headset you sit on it, bolted to it as you are to the board: you turn, pitch and lean with it.
 #   The headset: squeeze a grip with a hand on a handlebar grip to hold it. Twist the right grip back for throttle, as on a real bike; the
 #   right trigger is the brake. With both hands on, the bars turn the way you turn them. Lean your body (your head, side to side over the
 #   pegs) and the bike leans with you and turns that way; bars and leaning work together. Let go with both and it shuts off and coasts.
@@ -20,6 +20,8 @@ const TWIST_FULL := deg_to_rad(50.0)    # full throttle at this much
 const BODY_DEAD := 0.03            # metres your head can be off the middle of the bike, side to side, without leaning it,
 const BODY_FULL := 0.22            # and this far is leaning all the way
 const STEP_OFF_SIDE := 0.75        # getting off puts you this far to the left of the bike
+const SEATED_EYE := 1.65           # the headset: the eyes this high above the ground, as sitting on the seat (whatever your own height, and
+                                   # whether you stand or sit for real)
 const FLAT_EYE := 1.55             # a flat screen: the eye above the ground,
 const FLAT_LOOK_DOWN := 0.18       # looking a little down the road
 
@@ -52,13 +54,13 @@ func _init(p_bike: DirtBike, p_rig: Node3D, p_camera: Camera3D, p_hands: VrHands
 	hands = p_hands
 	vr = p_vr
 	if vr:
-		# the head over the pegs, facing the way the bike does, the feet on the pegs
+		# the head over the seat at a sitting rider's height, facing the way the bike does
 		var head_local := camera.position
 		var forward_local := -camera.transform.basis.z
 		var head_yaw := atan2(-forward_local.x, -forward_local.z)
 		var target := bike.rider_point()
 		var basis := Basis(Vector3.UP, bike.yaw - head_yaw)
-		var xf := Transform3D(basis, Vector3(target.x, target.y + DirtBike.PEG_HEIGHT, target.z) - basis * Vector3(head_local.x, 0.0, head_local.z))
+		var xf := Transform3D(basis, Vector3(target.x, target.y + SEATED_EYE - head_local.y, target.z) - basis * Vector3(head_local.x, 0.0, head_local.z))
 		rig_rel = bike.ride_transform().affine_inverse() * xf
 	_follow()
 

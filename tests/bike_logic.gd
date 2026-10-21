@@ -235,6 +235,7 @@ func run() -> void:
 	main.add_child(fake_rig)
 	fake_camera.position = Vector3(0, 1.6, 0)
 	var vr_ride := BikeRide.new(bike, fake_rig, fake_camera, vr_hands, true)
+	check(absf(fake_camera.global_position.y - (bike.pos.y + BikeRide.SEATED_EYE)) < 0.01, "in the headset you sit on it: eyes at a seated rider's height (%.2f m up)" % (fake_camera.global_position.y - bike.pos.y))
 	var hand_r: VrHands.HandState = vr_hands.states[1]
 	var hand_l: VrHands.HandState = vr_hands.states[0]
 	vr_hands.update(DT)
