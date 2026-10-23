@@ -4,7 +4,8 @@
 #        left     ·     right           Kickflip / Heelflip
 #   down-left   down   down-right       Varial Kickflip / Pop Shove-it / Varial Heelflip
 #
-# Eight equal 45° directions. Stick coordinates are the raw controller axes: left = -x, right = +x, up = -y, down = +y.
+# Eight equal 45° directions; an input settles briefly after B if the stick was not already aimed.
+# Stick coordinates are raw controller axes: left = -x, right = +x, up = -y, down = +y.
 # A trick's "flip" is null (no flip), true (kickflip) or false (heelflip); "shuv" is null (none), true (backside) or false.
 # Flicking the stick to the same side two or three times quickly, then B, makes a double or triple kickflip / heelflip: the trick comes
 # back with "turns" 2 or 3 (see `flicks`).
