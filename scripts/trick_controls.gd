@@ -23,7 +23,15 @@ const TRICKS := {
 
 var held := false             # B down last frame
 var press_age := INF          # time since B was pressed, while it is waiting for a direction
-var last = null               # the last stick direction pushed: { x, y, age since the stick came back to centre }
+# A completed, deliberate flick can be used if B follows the stick. Steering/old stick positions cannot.
+var previous_direction := "center"
+var stick_out_age := 0.0
+var stick_peak := 0.0
+var recent_flick_direction := ""
+var recent_flick_age := INF
+# If B comes first, the direction must settle briefly so crossing a diagonal does not steal the trick.
+var aim_direction := ""
+var aim_age := 0.0
 var ready_trick = null        # a trick picked on the ground, waiting for the board to leave it
 var ready_age := 0.0
 var flicks := 0               # how many quick flicks to the same side in a row (1..maxFlipTurns), counting from the stick's pushes
@@ -68,6 +76,13 @@ func reset() -> void:
 	flicks = 0
 	flick_side = ""
 	flick_age = INF
+	previous_direction = "center"
+	stick_out_age = 0.0
+	stick_peak = 0.0
+	recent_flick_direction = ""
+	recent_flick_age = INF
+	aim_direction = ""
+	aim_age = 0.0
 
 
 # Returns the trick to start now ({name, flip, shuv}), or null.
@@ -76,10 +91,12 @@ func sample(button: bool, x: float, y: float, dt: float, enabled: bool, can_star
 	held = button
 
 	var direction := stick_direction(x, y)
+	var radius := sqrt(x * x + y * y)
+	var was_direction := previous_direction
 	flick_age += dt
 	var side_now := direction if (direction == "left" or direction == "right") else ""
 	if side_now != "" and side_now != flick_out:
-		# A new push to the side. Soon enough after the last one, the same way: one more flick in the chain.
+		# Count separate same-side flicks for double/triple flips.
 		if side_now == flick_side and flick_age <= T.multiFlipWindow:
 			flicks = mini(flicks + 1, T.maxFlipTurns)
 		else:
@@ -87,13 +104,28 @@ func sample(button: bool, x: float, y: float, dt: float, enabled: bool, can_star
 			flicks = 1
 		flick_age = 0.0
 	flick_out = side_now
-	var out := direction != "center"
-	if out:
-		last = {"x": x, "y": y, "age": 0.0}
-	elif last != null:
-		last.age += dt
-		if last.age > T.trickWindow:
-			last = null
+
+	# Only buffer a recently RELEASED, short, strong flick. The old code remembered any
+	# steering direction for 0.4 s, so B often picked stale stick input instead of the new trick.
+	recent_flick_age += dt
+	if direction != "center":
+		if was_direction == "center":
+			stick_out_age = 0.0
+			stick_peak = radius
+		else:
+			stick_out_age += dt
+			stick_peak = maxf(stick_peak, radius)
+		recent_flick_direction = ""
+	elif was_direction != "center":
+		if stick_out_age <= 0.25 and stick_peak >= 0.75 and TRICKS.has(was_direction):
+			recent_flick_direction = was_direction
+			recent_flick_age = 0.0
+		else:
+			recent_flick_direction = ""
+			recent_flick_age = INF
+		stick_out_age = 0.0
+		stick_peak = 0.0
+	previous_direction = direction
 
 	if not enabled:
 		reset()
@@ -101,22 +133,43 @@ func sample(button: bool, x: float, y: float, dt: float, enabled: bool, can_star
 	if pressed:
 		press_age = 0.0
 		ready_trick = null
+		aim_direction = ""
+		aim_age = 0.0
 	elif press_age != INF:
 		press_age += dt
 	if press_age > T.trickWindow:
 		press_age = INF
 
-	# B is live and there is a direction: now if the stick is pushed, or the push you just let go of.
-	if ready_trick == null and press_age != INF and last != null:
-		var picked_direction := stick_direction(last.x, last.y)
-		var trick = TRICKS.get(picked_direction)
-		press_age = INF   # one press, one trick (an upward direction uses it up and does nothing)
-		last = null
-		if trick != null:
-			trick = trick.duplicate()
+	if ready_trick == null and press_age != INF:
+		var picked_direction := ""
+		# Stick flicked first, then B: use only a recent intentional release.
+		if pressed and direction == "center" and recent_flick_age <= 0.18:
+			picked_direction = recent_flick_direction
+		elif direction != "center":
+			if aim_direction != direction:
+				aim_direction = direction
+				aim_age = 0.0
+			else:
+				aim_age += dt
+			# B pressed on a stick already held to a side is instant. When B came first,
+			# wait 35-75 ms for the thumb to reach its intended sector.
+			var already_aimed := pressed and was_direction == direction and stick_out_age >= 0.045
+			var settle_time := 0.035 if radius >= 0.75 else 0.075
+			if TRICKS.has(direction) and (already_aimed or aim_age >= settle_time):
+				picked_direction = direction
+		else:
+			aim_direction = ""
+			aim_age = 0.0
+
+		# Never consume B on an unassigned upward direction. Let the player correct
+		# the stick during the trick window rather than silently swallowing the attempt.
+		if picked_direction != "" and TRICKS.has(picked_direction):
+			var trick = TRICKS[picked_direction].duplicate()
 			trick["turns"] = flicks if (picked_direction == flick_side and (picked_direction == "left" or picked_direction == "right")) else 1
 			ready_trick = trick
 			ready_age = 0.0
+			press_age = INF
+			recent_flick_direction = ""
 
 	if ready_trick == null:
 		return null
