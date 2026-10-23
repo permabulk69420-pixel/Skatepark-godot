@@ -1,7 +1,8 @@
 # The levels the game can load. Each entry says where its model is and the few things that differ per level: the play area the skater
 # is kept inside (half-extents x/z around an optional centre cx/cz), the intro text, and `look` (optional) to override the lighting:
 # toneMapping ("aces"; anything else is plain linear), exposure, sun (intensity), sunColor, sunDirection ([x, y, z] towards the sun),
-# hemisphere (fill), fog (colour), fogNear, fogFar. A level can also have `night` (a night version of a scan, see scripts/night.gd).
+# hemisphere (fill), fog (colour), fogNear, fogFar, and panorama (a 360° image to use as the sky instead of the plain gradient). A level
+# can also have `night` (a night version of a scan, see scripts/night.gd).
 # Same layout as the web build's levels.js, so more levels can be added one entry at a time.
 class_name Levels
 extends RefCounted
@@ -81,6 +82,8 @@ const LEVELS := {
 		"look": {
 			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
 			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,
+			# the park in the middle of a city: rendered with this sun and fog, the downtown skyline ahead of the tower start
+			"panorama": "res://assets/sky/city_panorama.jpg",
 		},
 	},
 	"switchyard": {
