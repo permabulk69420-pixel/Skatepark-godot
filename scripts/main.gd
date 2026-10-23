@@ -929,7 +929,7 @@ func _build_environment(look: Dictionary, night := {}) -> void:
 	sky_material.sun_curve = 0.12
 	var sky := Sky.new()
 	sky.sky_material = sky_material
-	if look.has("panorama"):   # a rendered 360° backdrop instead (the city round Foundry: tools/build_city_panorama.py)
+	if look.has("panorama") and ResourceLoader.exists(look.panorama):   # a rendered 360° backdrop instead (tools/build_*_panorama.py)
 		var panorama := PanoramaSkyMaterial.new()
 		panorama.panorama = load(look.panorama)
 		panorama.energy_multiplier = 1.0 / float(look.exposure)   # the image is already exposed: shown as rendered

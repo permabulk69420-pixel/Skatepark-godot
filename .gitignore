@@ -3,3 +3,7 @@ node_modules/
 android/
 build/
 addons/
+art/breakwater_panorama/downloads/
+art/breakwater_panorama/preview.png
+art/breakwater_panorama/crop.png
+art/breakwater_panorama/test_*.png

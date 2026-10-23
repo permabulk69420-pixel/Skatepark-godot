@@ -67,6 +67,8 @@ const LEVELS := {
 		"look": {
 			"toneMapping": "aces", "exposure": 0.85, "sun": 2.1, "sunColor": "#ffe6c4", "sunDirection": [-0.40, 0.73, -0.56],
 			"hemisphere": 0.48, "environment": 0.25, "fog": "#b8c6c5", "fogNear": 130.0, "fogFar": 290.0,
+			# a harbour city round the park (tools/build_breakwater_panorama.py); the plain sky until that has been rendered
+			"panorama": "res://assets/sky/breakwater_panorama.jpg",
 		},
 	},
 	"foundry": {
