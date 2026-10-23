@@ -133,7 +133,8 @@ func test_trick_controls() -> void:
 	check(TrickControls.stick_direction(1.0, 0.5) == "down-right", "down-right remains varial-heelflip territory")
 
 	var tc := TrickControls.new()
-	tc.sample(false, 1.0, 0.0, dt, true, true)
+	for i in 6:
+		tc.sample(false, 1.0, 0.0, dt, true, true)
 	var trick = tc.sample(true, 1.0, 0.0, dt, true, true)
 	check(trick != null and trick.name == "Heelflip", "stick held straight right BEFORE B immediately starts a heelflip")
 
