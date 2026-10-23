@@ -20,6 +20,8 @@ behind them.
 --preview renders the panorama at 2048 × 1024 (art/breakwater_panorama/preview.png).
 --crop x0 x1 y0 y1 renders one part of it at full size (art/breakwater_panorama/crop.png).
 --size 4096 makes the full render 4096 × 2048 instead (about a quarter of the time).
+The full render goes in bands, each saved as it is done (art/breakwater_panorama/parts): if it is interrupted, run the same
+command again and it carries on where it stopped.
 Without either: art/breakwater_panorama/breakwater_panorama.blend, …_8k.png and assets/sky/breakwater_panorama.jpg (the game's
 copy; Breakwater's look in scripts/levels.gd already names it, and the game uses it as soon as it exists).
 
@@ -1466,24 +1468,70 @@ def panorama():
 		r.use_border = r.use_crop_to_border = True
 		r.border_min_x, r.border_max_x, r.border_min_y, r.border_max_y = CROP
 		scene.render.filepath = str(ART / 'crop.png')
+		bpy.ops.render.render(write_still=True)
 	elif PREVIEW:
 		setup_render((2048, 1024), 32)
 		scene.render.filepath = str(ART / 'preview.png')
+		bpy.ops.render.render(write_still=True)
 	else:
 		setup_render((SIZE, SIZE // 2), 64 if SIZE > 4096 else 48)
-		bpy.ops.wm.save_as_mainfile(filepath=str(ART / 'breakwater_panorama.blend'), compress=True)
-		scene.render.filepath = str(ART / f'breakwater_panorama_{SIZE // 1024}k.png')
-	bpy.ops.render.render(write_still=True)
-	if not (PREVIEW or CROP):
-		scene.render.image_settings.file_format = 'JPEG'
-		scene.render.image_settings.quality = 92
-		bpy.data.images['Render Result'].save_render(str(GAME / 'breakwater_panorama.jpg'), scene=scene)
-		# Godot's import settings for it: compressed on the GPU (uncompressed, 8K would take some 130 MB on a Quest), with
-		# mipmaps. Godot fills in the rest of the file on its next import.
-		imp = GAME / 'breakwater_panorama.jpg.import'
-		if not imp.exists():
-			imp.write_text('[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\ncompress/mode=2\nmipmaps/generate=true\n')
+		blend = ART / 'breakwater_panorama.blend'
+		if not blend.exists():
+			bpy.ops.wm.save_as_mainfile(filepath=str(blend), compress=True)
+		final(render_in_bands(SIZE, SIZE // 2))
 
+
+BANDS, OVERLAP = 8, 32   # horizontal bands, and the extra rows each is rendered with so the denoiser has no edge at the seams
+
+
+def render_in_bands(w, h):
+	"""The full render, one horizontal band at a time, each saved as it finishes (art/breakwater_panorama/parts): run the
+	script again after an interruption and it carries on from the first band that is missing. Returns the whole image's
+	pixels (RGBA rows from the bottom, as Blender keeps them)."""
+	import numpy as np
+	parts = ART / 'parts' / f'{w}'
+	parts.mkdir(parents=True, exist_ok=True)
+	r = scene.render
+	r.use_border = r.use_crop_to_border = True
+	r.border_min_x, r.border_max_x = 0.0, 1.0
+	out = np.zeros((h, w, 4), dtype=np.float32)
+	bh = h // BANDS
+	for i in range(BANDS):
+		y0, y1 = i * bh, (i + 1) * bh if i < BANDS - 1 else h
+		r0, r1 = max(0, y0 - OVERLAP), min(h, y1 + OVERLAP)
+		path = parts / f'band_{i}.png'
+		if not path.exists():
+			print(f'band {i + 1} of {BANDS}: rows {y0}-{y1}')
+			r.border_min_y, r.border_max_y = r0 / h, r1 / h
+			r.filepath = str(path)
+			bpy.ops.render.render(write_still=True)
+		img = bpy.data.images.load(str(path))
+		bw, bhh = img.size
+		px = np.empty(bw * bhh * 4, dtype=np.float32)
+		img.pixels.foreach_get(px)
+		px = px.reshape(bhh, bw, 4)
+		out[y0:y1] = px[y0 - r0:y1 - r0]
+		bpy.data.images.remove(img)
+	r.use_border = False
+	return out
+
+
+def final(pixels):
+	"""Writes the whole panorama: the full PNG beside the .blend, and the game's JPEG with its Godot import settings."""
+	h, w, _ = pixels.shape
+	img = bpy.data.images.new('Panorama', w, h, alpha=False)
+	img.pixels.foreach_set(pixels.ravel())
+	img.filepath_raw = str(ART / f'breakwater_panorama_{w // 1024}k.png')
+	img.file_format = 'PNG'
+	img.save()
+	img.filepath_raw = str(GAME / 'breakwater_panorama.jpg')
+	img.file_format = 'JPEG'
+	img.save(quality=92)
+	# Godot's import settings for it: compressed on the GPU (uncompressed, 8K would take some 130 MB on a Quest), with mipmaps.
+	# Godot fills in the rest of the file on its next import.
+	imp = GAME / 'breakwater_panorama.jpg.import'
+	if not imp.exists():
+		imp.write_text('[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\ncompress/mode=2\nmipmaps/generate=true\n')
 
 if TEST:
 	test_street()
