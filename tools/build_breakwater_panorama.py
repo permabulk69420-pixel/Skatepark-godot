@@ -19,6 +19,7 @@ behind them.
 --test renders close views of the modules on a short street instead (art/breakwater_panorama/test_*.png).
 --preview renders the panorama at 2048 × 1024 (art/breakwater_panorama/preview.png).
 --crop x0 x1 y0 y1 renders one part of it at full size (art/breakwater_panorama/crop.png).
+--size 4096 makes the full render 4096 × 2048 instead (about a quarter of the time).
 Without either: art/breakwater_panorama/breakwater_panorama.blend, …_8k.png and assets/sky/breakwater_panorama.jpg (the game's
 copy; Breakwater's look in scripts/levels.gd already names it, and the game uses it as soon as it exists).
 
@@ -39,6 +40,7 @@ ASSETS = ART / 'downloads'
 TEST = '--test' in sys.argv
 PREVIEW = '--preview' in sys.argv
 CPU = '--cpu' in sys.argv
+SIZE = int(sys.argv[sys.argv.index('--size') + 1]) if '--size' in sys.argv else 8192   # width of the full render
 SAMPLES = int(sys.argv[sys.argv.index('--samples') + 1]) if '--samples' in sys.argv else None
 # --crop x0 x1 y0 y1: just that part of the full-size panorama (fractions of its width and height, y from the bottom), to check
 # detail without rendering all of it; written to art/breakwater_panorama/crop.png
@@ -1468,9 +1470,9 @@ def panorama():
 		setup_render((2048, 1024), 32)
 		scene.render.filepath = str(ART / 'preview.png')
 	else:
-		setup_render((8192, 4096), 64)
+		setup_render((SIZE, SIZE // 2), 64 if SIZE > 4096 else 48)
 		bpy.ops.wm.save_as_mainfile(filepath=str(ART / 'breakwater_panorama.blend'), compress=True)
-		scene.render.filepath = str(ART / 'breakwater_panorama_8k.png')
+		scene.render.filepath = str(ART / f'breakwater_panorama_{SIZE // 1024}k.png')
 	bpy.ops.render.render(write_still=True)
 	if not (PREVIEW or CROP):
 		scene.render.image_settings.file_format = 'JPEG'
