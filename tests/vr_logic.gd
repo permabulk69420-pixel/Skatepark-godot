@@ -36,6 +36,7 @@ func run() -> void:
 	await process_frame
 	test_hand_balance()
 	test_controller_mapping()
+	test_trick_controls()
 	test_rig_geometry()
 	test_haptics()
 	print("\n%s" % ("all headset-logic checks pass" if failures == 0 else "%d checks FAILED" % failures))
@@ -119,6 +120,82 @@ func test_controller_mapping() -> void:
 	left.free()
 	right.free()
 
+
+
+func test_trick_controls() -> void:
+	print("trick stick sectors and timing")
+	var dt := 1.0 / 90.0
+	# The two horizontal sectors are mirrors: 45 degrees centred on left/right.
+	for y in [-0.35, 0.0, 0.35]:
+		check(TrickControls.stick_direction(1.0, y) == "right", "heelflip catches straight right and both +/- 19 degree offsets (y=%.2f)" % y)
+		check(TrickControls.stick_direction(-1.0, y) == "left", "kickflip mirrors the heelflip sector (y=%.2f)" % y)
+	check(TrickControls.stick_direction(1.0, -0.5) == "up-right", "up-right remains its own unassigned sector")
+	check(TrickControls.stick_direction(1.0, 0.5) == "down-right", "down-right remains varial-heelflip territory")
+
+	var tc := TrickControls.new()
+	for i in 6:
+		tc.sample(false, 1.0, 0.0, dt, true, true)
+	var trick = tc.sample(true, 1.0, 0.0, dt, true, true)
+	check(trick != null and trick.name == "Heelflip", "stick held straight right BEFORE B immediately starts a heelflip")
+
+	# B first: crossing an intermediate diagonal must not select a varial or eat the press.
+	tc = TrickControls.new()
+	tc.sample(true, 0.0, 0.0, dt, true, true)
+	check(tc.sample(true, 0.5, 0.6, dt, true, true) == null, "passing through down-right does not immediately steal B")
+	trick = null
+	for i in 8:
+		var attempt = tc.sample(true, 1.0, 0.0, dt, true, true)
+		if attempt != null:
+			trick = attempt
+	check(trick != null and trick.name == "Heelflip", "B then a rightward sweep ends in a heelflip, not a varial")
+
+	tc = TrickControls.new()
+	tc.sample(true, 0.0, 0.0, dt, true, true)
+	for i in 9:
+		check(tc.sample(true, 0.8, -0.5, dt, true, true) == null, "unassigned up-right does not consume B")
+	trick = null
+	for i in 8:
+		var attempt = tc.sample(true, 1.0, -0.1, dt, true, true)
+		if attempt != null:
+			trick = attempt
+	check(trick != null and trick.name == "Heelflip", "moving from up-right back to right still triggers a heelflip")
+
+	# Partial deflection should also work if the stick stays in its sector.
+	tc = TrickControls.new()
+	tc.sample(true, 0.0, 0.0, dt, true, true)
+	trick = null
+	for i in 12:
+		var attempt = tc.sample(true, 0.55, -0.10, dt, true, true)
+		if attempt != null:
+			trick = attempt
+	check(trick != null and trick.name == "Heelflip", "a steady partial right deflection works after a short settle")
+
+	# Quick side flick then B is still supported (including multi-flips).
+	tc = TrickControls.new()
+	for i in 3:
+		tc.sample(false, 1.0, 0.0, dt, true, true)
+	tc.sample(false, 0.0, 0.0, dt, true, true)
+	trick = tc.sample(true, 0.0, 0.0, dt, true, true)
+	check(trick != null and trick.name == "Heelflip", "a recent released flick then B still starts the trick")
+
+	tc = TrickControls.new()
+	for i in 30:
+		tc.sample(false, -1.0, 0.0, dt, true, true)
+	tc.sample(false, 0.0, 0.0, dt, true, true)
+	check(tc.sample(true, 0.0, 0.0, dt, true, true) == null, "old steering input cannot steal the next B press")
+	trick = null
+	for i in 8:
+		var attempt = tc.sample(true, 1.0, 0.0, dt, true, true)
+		if attempt != null:
+			trick = attempt
+	check(trick != null and trick.name == "Heelflip", "B after releasing a long-held steer still accepts the new rightward flick")
+
+	tc = TrickControls.new()
+	for i in 3:
+		tc.sample(false, -1.0, 0.0, dt, true, true)
+	tc.sample(false, 0.0, 0.0, dt, true, true)
+	trick = tc.sample(true, 0.0, 0.0, dt, true, true)
+	check(trick != null and trick.name == "Kickflip", "the opposite side still triggers kickflips")
 
 func test_rig_geometry() -> void:
 	print("headset rig")
