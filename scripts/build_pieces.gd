@@ -99,8 +99,9 @@ static func make(kind: String, id: String) -> Node3D:
 		"funbox":
 			var model := (load(FUNBOX_SCENE) as PackedScene).instantiate() as Node3D
 			piece.add_child(model)
-			var collider := model.find_child("COL_Funbox", true, false)
+			var collider := model.find_child("COL_Funbox", true, false) as MeshInstance3D
 			collider.name = "COL_Build_" + id   # (each funbox's collision body is named after it)
+			collider.visible = false            # (never drawn, as for the arcade machine's)
 			colliders.append(collider.name)
 			for mesh: Node in model.find_children("ENV_*", "MeshInstance3D", true, false):
 				var lod = (mesh.get_meta("extras", {}) as Dictionary).get("lod")
