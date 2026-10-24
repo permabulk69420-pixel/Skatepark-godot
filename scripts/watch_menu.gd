@@ -1,4 +1,4 @@
-# The menu: Resume, Retry, Return to house, the two balance-hand choices, Exit (and in the house, Build mode, with its own page). In the headset it is the big frame from the watch (assets/hud/menu_frame.glb) hung
+# The menu: Resume, Retry, Return to house, the two balance-hand choices, Exit (and in the house and on the Slab, Build mode, with its own page). In the headset it is the big frame from the watch (assets/hud/menu_frame.glb) hung
 # in front of you, with a laser from the right hand to point and the trigger to press. On a flat screen it is a plain overlay
 # (M opens it, the mouse or Up / Down / Enter choose).
 class_name WatchMenu
@@ -46,13 +46,13 @@ var over: Button
 var main_page: VBoxContainer       # the buttons
 var goals_page: VBoxContainer      # the goals list (levels with goals), with a Back button
 var goals_rows: VBoxContainer
-var build_page: VBoxContainer      # build mode's page (the house only)
+var build_page: VBoxContainer      # build mode's page (the house and the Slab only)
 var building := false              # while building, the menu opens on that page
 
 
-func _init(parent: Node, p_vr: bool, in_house: bool, title: String, has_goals := false) -> void:
+func _init(parent: Node, p_vr: bool, in_house: bool, title: String, has_goals := false, can_build := false) -> void:
 	vr = p_vr
-	content = _build(in_house, title, has_goals)
+	content = _build(in_house, title, has_goals, can_build)
 	if vr:
 		_build_frame(parent)
 	else:
@@ -71,10 +71,13 @@ func _init(parent: Node, p_vr: bool, in_house: bool, title: String, has_goals :=
 		centre.add_child(content)
 
 
-# The buttons the menu has for this place (the house has nothing to retry and nowhere to go back to, but it can be built in).
-static func actions_for(in_house: bool, has_goals := false) -> Array:
+# The buttons the menu has for this place (the house has nothing to retry and nowhere to go back to, but it can be built in, and so can a
+# level that says so: the Slab).
+static func actions_for(in_house: bool, has_goals := false, can_build := false) -> Array:
 	if in_house:
 		return ["resume", "build", "grind_hand", "manual_hand", "exit"]
+	if can_build:
+		return ["resume", "build", "retry", "home", "grind_hand", "manual_hand", "exit"]
 	if has_goals:
 		return ["resume", "retry", "goals", "home", "grind_hand", "manual_hand", "exit"]
 	return ["resume", "retry", "home", "grind_hand", "manual_hand", "exit"]
@@ -163,7 +166,7 @@ func set_building(on: bool) -> void:
 		(buttons["build_resume" if on else "resume"] as Button).grab_focus()
 
 
-func _build(in_house: bool, title: String, has_goals: bool) -> Control:
+func _build(in_house: bool, title: String, has_goals: bool, can_build: bool) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(PIXELS)
 	panel.add_theme_stylebox_override("panel", _box(PANEL, Color(0.14, 0.2, 0.23), 2, 22))
@@ -179,7 +182,7 @@ func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 	margin.add_child(column)
 	main_page = column
 	_add_heading(column, title)
-	for action: String in actions_for(in_house, has_goals):
+	for action: String in actions_for(in_house, has_goals, can_build):
 		var button := _make_button(caption_for(action))
 		if action == "goals":
 			button.pressed.connect(func() -> void: _show_goals(true))
@@ -204,7 +207,7 @@ func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 		back.pressed.connect(func() -> void: _show_goals(false))
 		goals_page.add_child(back)
 		buttons["goals_back"] = back
-	if in_house:
+	if in_house or can_build:
 		build_page = VBoxContainer.new()
 		build_page.add_theme_constant_override("separation", 8)
 		build_page.alignment = BoxContainer.ALIGNMENT_CENTER

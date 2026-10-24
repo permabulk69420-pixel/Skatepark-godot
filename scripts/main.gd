@@ -47,7 +47,7 @@ var dragging := false
 var held_level_switch := 0.0
 var switching := false
 var hub: Hub                     # the house (null in every other level)
-var build: BuildMode             # moving things about the house (null in every other level)
+var build: BuildMode             # moving things about the house, or the Slab (null in every other level)
 var ride: BikeRide               # riding a dirt bike (null when not)
 var bike_sound: BikeSound
 var bike_armed := true           # walking up to a bike gets you on, but only once you have been away from one since you got off
@@ -115,6 +115,8 @@ func _ready() -> void:
 
 	if level_id == Levels.HUB:
 		level = LevelLoader.from_root(Hub.build_root(), self)
+	elif level_id == Levels.SLAB:
+		level = LevelLoader.from_root(Slab.build_root(), self)
 	else:
 		level = LevelLoader.load_level(info.file, self, info.get("decals", ""))
 	if level == null:
@@ -151,7 +153,7 @@ func _ready() -> void:
 	if info.has("goals"):
 		goals = Goals.new(level_id, info.goals)
 		goals.completed.connect(func(text: String) -> void: hud.say("Goal done: " + text, 3.5))
-	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name, goals != null)
+	watch_menu = WatchMenu.new(self, vr, level_id == Levels.HUB, info.name, goals != null, info.get("build", false))
 	grind_hand = HandBalance.pushing_hand("grind")
 	manual_hand = HandBalance.pushing_hand("manual")
 	watch_menu.set_hands(grind_hand, manual_hand)
@@ -191,11 +193,12 @@ func _ready() -> void:
 		hub = Hub.new(level, self, vr)
 		if hub.tv != null:
 			hub.tv.chosen.connect(_go_to)
+	if level_id == Levels.HUB or info.get("build", false):   # (you start on foot in a level you can build in)
 		build = BuildMode.new(level, get_world_3d().direct_space_state, self, vr)
 		bike_sound = BikeSound.new()
 		bike_sound.name = "BikeSound"
 		add_child(bike_sound)
-		var back := BuildMode.take_come_back()   # (the house was loaded again by build mode: you stay where you were)
+		var back := BuildMode.take_come_back()   # (the level was loaded again by build mode: you stay where you were)
 		if back.is_empty():
 			_stand_up(level.spawn_pos, level.spawn_heading)
 		else:
@@ -470,16 +473,16 @@ func _on_menu_chosen(action: String) -> void:
 			var facing := foot.facing()
 			build.add(action.substr(4), foot.body() + Vector3(-sin(facing), 0.0, -cos(facing)) * 1.5, facing)
 		"build_done":
-			HubLayout.write(build.layout())
+			HubLayout.write(build.layout(), level_id)
 			_reload_house(false)
 		"build_cancel":
 			_reload_house(false)
 		"build_reset":
-			HubLayout.clear()
+			HubLayout.clear(level_id)
 			_reload_house(true)
 
 
-# Into build mode (from the house's menu): on foot, the menu turned to the build page.
+# Into build mode (from the menu, in the house or on the Slab): on foot, the menu turned to the build page.
 func _start_building() -> void:
 	if ride != null:
 		_get_off_bike()
@@ -489,12 +492,12 @@ func _start_building() -> void:
 	watch_menu.set_building(true)
 
 
-# Build mode is over (or starts again from the house as it was): the house is loaded again with you standing where you are.
+# Build mode is over (or starts again from the level as it was): the level is loaded again with you standing where you are.
 func _reload_house(keep_building: bool) -> void:
 	if ride != null:
 		_get_off_bike()
 	BuildMode.come_back = {"pos": foot.body(), "yaw": foot.facing(), "building": keep_building}
-	_go_to(Levels.HUB)
+	_go_to(level_id)
 
 
 # Building: walk about as on foot, and point to pick things up, carry them, turn them and put them down.

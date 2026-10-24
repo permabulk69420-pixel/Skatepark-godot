@@ -24,6 +24,18 @@ const LEVELS := {
 			"ambient": "#a07a58", "ambientSky": 0.35,
 		},
 	},
+	# A blank concrete slab in a field, to build your own park on with build mode (scripts/slab.gd: made in code, so there is no file).
+	"slab": {
+		"name": "Slab",
+		"blurb": "A blank 100 × 100 metre concrete slab to build your own park on · open the menu and choose Build mode · RIFT board",
+		"bounds": {"x": 50.0, "z": 50.0, "cx": 0.0, "cz": 0.0},
+		"camera_far": 400.0,
+		"build": true,
+		"look": {
+			"exposure": 0.74, "sun": 3.4, "sunColor": "#ffdcb4", "sunDirection": [-0.62, 0.5, -0.6],
+			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,
+		},
+	},
 	"gravesend": {
 		"name": "Gravesend",
 		"file": "res://assets/levels/gravesend.glb",
@@ -152,7 +164,8 @@ const LEVELS := {
 }
 
 const HUB := "hub"
-const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "switchyard", "megaramp", "flightline", "spillway"]   # the levels on the TV, in channel order
+const SLAB := "slab"
+const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "switchyard", "megaramp", "flightline", "spillway", "slab"]   # the levels on the TV, in channel order
 const SETTINGS := "user://settings.cfg"
 
 # The level the next scene should open on (set by go_to); empty means the house.

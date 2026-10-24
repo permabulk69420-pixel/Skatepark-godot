@@ -1,5 +1,6 @@
 # Where build mode left things in the house: kept in user://layout.cfg, a section per piece (its id) with its kind ("" for the house's
-# own half pipe, couch and rug) and where it stands. Read each time the house is built.
+# own half pipe, couch and rug) and where it stands. Read each time the house is built. Any other level that can be built in (the Slab)
+# keeps its own, in user://layout_<level>.cfg.
 class_name HubLayout
 extends RefCounted
 
@@ -8,10 +9,14 @@ const FILE := "user://layout.cfg"
 static var path := FILE   # (a test points it somewhere else)
 
 
+static func file(level := Levels.HUB) -> String:
+	return path if level == Levels.HUB else "user://layout_%s.cfg" % level
+
+
 # [{"id", "kind", "transform"}], or empty when nothing has been moved yet.
-static func read() -> Array:
+static func read(level := Levels.HUB) -> Array:
 	var cfg := ConfigFile.new()
-	if cfg.load(path) != OK:
+	if cfg.load(file(level)) != OK:
 		return []
 	var entries: Array = []
 	for id in cfg.get_sections():
@@ -19,18 +24,18 @@ static func read() -> Array:
 	return entries
 
 
-static func write(entries: Array) -> void:
+static func write(entries: Array, level := Levels.HUB) -> void:
 	var cfg := ConfigFile.new()
 	for entry: Dictionary in entries:
 		cfg.set_value(entry.id, "kind", entry.kind)
 		cfg.set_value(entry.id, "transform", entry.transform)
-	cfg.save(path)
+	cfg.save(file(level))
 
 
-# Everything back where the house had it.
-static func clear() -> void:
-	if FileAccess.file_exists(path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+# Everything back where the house had it (or, on the Slab, nothing there).
+static func clear(level := Levels.HUB) -> void:
+	if FileAccess.file_exists(file(level)):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(file(level)))
 
 
 # Puts the house's own pieces where they were left and adds the pieces that were added (`root`: the house, already marked).
