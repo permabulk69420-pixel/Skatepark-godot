@@ -23,7 +23,7 @@ const TEXT := Color("e9eef0")
 const TEXT_DIM := Color("7f9298")
 const ROW_HEIGHT := 56
 const FONT := 32
-const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "build_done", "build_cancel", "build_reset"]
+const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "add_funbox", "build_done", "build_cancel", "build_reset"]
 const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove one you added"
 
 var is_open := false
@@ -85,6 +85,7 @@ static func caption_for(action: String) -> String:
 		"add_arcade": return "Add an arcade machine"
 		"add_rail": return "Add a flat rail"
 		"add_bike": return "Add a dirt bike"
+		"add_funbox": return "Add the funbox"
 		"build_done": return "Done: save it"
 		"build_cancel": return "Cancel: undo the changes"
 		"build_reset": return "Put everything back"
@@ -204,10 +205,20 @@ func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 		build_page.visible = false
 		margin.add_child(build_page)
 		_add_heading(build_page, "Build")
+		var adds := GridContainer.new()   # (the "Add …" buttons two to a row, so the page still fits the frame)
+		adds.columns = 2
+		adds.add_theme_constant_override("h_separation", 8)
+		adds.add_theme_constant_override("v_separation", 8)
 		for action: String in BUILD_ACTIONS:
 			var button := _make_button(caption_for(action))
 			button.pressed.connect(func() -> void: chosen.emit(action))
-			build_page.add_child(button)
+			if action.begins_with("add_"):
+				button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				if adds.get_parent() == null:
+					build_page.add_child(adds)
+				adds.add_child(button)
+			else:
+				build_page.add_child(button)
 			buttons[action] = button
 		var hint := Label.new()
 		hint.text = BUILD_HINT

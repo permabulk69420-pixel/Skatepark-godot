@@ -216,7 +216,7 @@ func add(kind: String, near: Vector3, facing: float) -> Node3D:
 	fine_was = false
 	_hold_turn(piece)
 	hold_offset = Vector3.ZERO
-	hold_lift = -(boxes[piece] as AABB).position.y
+	hold_lift = BuildPieces.info(piece).get("lift", -(boxes[piece] as AABB).position.y)
 	return piece
 
 
