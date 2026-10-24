@@ -8,7 +8,7 @@ name: Build Quest APK
 
 on:
   push:
-    branches: [main, ccr-a7572bf4-a4071g, ccr-4ea6cdb6-j547jk, ccr-d2d1b786-lfvbxg]
+    branches: [main, ccr-a7572bf4-a4071g, ccr-4ea6cdb6-j547jk, ccr-d2d1b786-lfvbxg, ccr-c564a031-w67ts5]
     paths-ignore: ['tests/**', '**.md']
   workflow_dispatch:
 
