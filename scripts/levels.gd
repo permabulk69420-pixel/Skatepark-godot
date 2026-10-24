@@ -36,6 +36,23 @@ const LEVELS := {
 			"hemisphere": 0.25, "environment": 0.5, "fog": "#c4d4de", "fogNear": 130.0, "fogFar": 290.0,
 		},
 	},
+	# Marlowe Street Baths: an indoor park in a drained Victorian swimming baths (tools/build_baths.py). Its light is baked into the
+	# model (scripts/baked_light.gd); the look below lights only what moves (the board, the hands).
+	"baths": {
+		"name": "The Baths",
+		"file": "res://assets/levels/baths.glb",
+		"blurb": "Marlowe Street Baths, 1898: a drained Victorian swimming baths · a 33 m pool from 1.2 m to a 3.4 m deep end, a 4.2 m diving pool and a kidney learner pool · drop in off the gallery · gallery and stair rails, tiled benches, a spine between the pools · RIFT board",
+		"bounds": {"x": 41.7, "z": 19.7, "cx": 0.0, "cz": 0.0},
+		"camera_far": 300.0,
+		"baked": {"gain": 3.0},
+		"look": {
+			"toneMapping": "aces", "exposure": 1.0, "sun": 1.8, "sunColor": "#ffe2c0", "sunDirection": [-0.55, 0.53, 0.65],
+			"hemisphere": 0.4, "environment": 0.4, "fog": "#cdbfa8", "fogNear": 30.0, "fogFar": 320.0,
+			"ambient": "#b8a58c", "ambientSky": 0.4,
+			# the city round the baths, seen through the windows and the glass roof
+			"panorama": "res://assets/sky/city_panorama.jpg",
+		},
+	},
 	"gravesend": {
 		"name": "Gravesend",
 		"file": "res://assets/levels/gravesend.glb",
@@ -165,7 +182,7 @@ const LEVELS := {
 
 const HUB := "hub"
 const SLAB := "slab"
-const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "switchyard", "megaramp", "flightline", "spillway", "slab"]   # the levels on the TV, in channel order
+const PLAYABLE := ["gravesend", "gravesendnight", "foundry", "breakwater", "switchyard", "megaramp", "flightline", "spillway", "baths", "slab"]   # the levels on the TV, in channel order
 const SETTINGS := "user://settings.cfg"
 
 # The level the next scene should open on (set by go_to); empty means the house.

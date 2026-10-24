@@ -125,6 +125,8 @@ func _ready() -> void:
 		return
 	if info.has("night"):
 		Night.apply(self, level, info.night)
+	if info.has("baked"):
+		BakedLight.apply(level, info.baked)
 	# The collision bodies are only seen by the physics server after a physics step.
 	await get_tree().physics_frame
 	await get_tree().physics_frame

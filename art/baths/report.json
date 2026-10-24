@@ -1,0 +1,16 @@
+{
+  "vertices": 157083,
+  "samples": 512,
+  "gain": 3.0,
+  "light": {
+    "p10": 0.0,
+    "p50": 0.31,
+    "p90": 1.041,
+    "p99": 1.336,
+    "max": 9.725,
+    "clipped_share": 0.0004
+  },
+  "collision_triangles": 85256,
+  "grind_paths": 26,
+  "render_triangles": 287741
+}

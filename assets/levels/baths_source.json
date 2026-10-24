@@ -1,0 +1,122 @@
+{
+  "floor_tiles_06": {
+    "source": "https://polyhaven.com/a/floor_tiles_06",
+    "license": "CC0-1.0",
+    "files": {
+      "floor_tiles_06_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/floor_tiles_06/floor_tiles_06_diff_2k.jpg",
+        "sha256": "fe326c219d096e8f5d31c9be6da5a617f34c58b3042d0733f7d4450a38906b37"
+      }
+    }
+  },
+  "long_white_tiles": {
+    "source": "https://polyhaven.com/a/long_white_tiles",
+    "license": "CC0-1.0",
+    "files": {
+      "long_white_tiles_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/long_white_tiles/long_white_tiles_diff_2k.jpg",
+        "sha256": "476ccb9f93aa78dbf3be31a4de66a7b2a180c199c6ee18381498e3159d40655a"
+      }
+    }
+  },
+  "red_brick_03": {
+    "source": "https://polyhaven.com/a/red_brick_03",
+    "license": "CC0-1.0",
+    "files": {
+      "red_brick_03_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_brick_03/red_brick_03_diff_2k.jpg",
+        "sha256": "c37ef11bb94a533d1c758c5c7d7199264e90f19b23946766c7c59aa189c11ff6"
+      }
+    }
+  },
+  "painted_plaster_wall": {
+    "source": "https://polyhaven.com/a/painted_plaster_wall",
+    "license": "CC0-1.0",
+    "files": {
+      "painted_plaster_wall_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg",
+        "sha256": "6fd812ed8dd5be1873c29aeef38ce9bf1fb30a22c6d4b3a12db725e98c26a1be"
+      }
+    }
+  },
+  "wood_floor_worn": {
+    "source": "https://polyhaven.com/a/wood_floor_worn",
+    "license": "CC0-1.0",
+    "files": {
+      "wood_floor_worn_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_floor_worn/wood_floor_worn_diff_2k.jpg",
+        "sha256": "aff7c4037c3d4d900d2702d9f676ea86338099e98f69fc91b3e3c5de9f488cbf"
+      }
+    }
+  },
+  "green_metal_rust": {
+    "source": "https://polyhaven.com/a/green_metal_rust",
+    "license": "CC0-1.0",
+    "files": {
+      "green_metal_rust_diff_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_diff_1k.jpg",
+        "sha256": "4509ab0cb1cf6bf9b9f970450a41f83ebd9bff178006deae568ff34b404856fc"
+      }
+    }
+  },
+  "blue_painted_planks": {
+    "source": "https://polyhaven.com/a/blue_painted_planks",
+    "license": "CC0-1.0",
+    "files": {
+      "blue_painted_planks_diff_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/blue_painted_planks/blue_painted_planks_diff_1k.jpg",
+        "sha256": "31bab926cd4fb1f1df9e863af6bbf49e678a0e3b960cbc543e6a36000aaa6b13"
+      }
+    }
+  },
+  "rounded_square_tiled_wall": {
+    "source": "https://polyhaven.com/a/rounded_square_tiled_wall",
+    "license": "CC0-1.0",
+    "files": {
+      "rounded_square_tiled_wall_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rounded_square_tiled_wall/rounded_square_tiled_wall_diff_2k.jpg",
+        "sha256": "12b1f69125a526e95de030d40d760b993e4f257787cd18cd692fc34ed78c4d53"
+      }
+    }
+  },
+  "concrete_wall_008": {
+    "source": "https://polyhaven.com/a/concrete_wall_008",
+    "license": "CC0-1.0",
+    "files": {
+      "concrete_wall_008_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_008/concrete_wall_008_diff_2k.jpg",
+        "sha256": "a3eb7b24c5cf6f113ec9b3be8ab1715360ef3cbf4b1699979414e44341f54846"
+      }
+    }
+  },
+  "plywood": {
+    "source": "https://polyhaven.com/a/plywood",
+    "license": "CC0-1.0",
+    "files": {
+      "plywood_diff_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/plywood/plywood_diff_1k.jpg",
+        "sha256": "800905650fc6cab2fe7c77c41851f8ea89669f1287ad5ce67c48f435654c0af8"
+      }
+    }
+  },
+  "oriented_strand_board": {
+    "source": "https://polyhaven.com/a/oriented_strand_board",
+    "license": "CC0-1.0",
+    "files": {
+      "oriented_strand_board_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oriented_strand_board/oriented_strand_board_diff_2k.jpg",
+        "sha256": "88c17de0b8e445a7ae6eb51b20ef95fc31a4430c6df1fdda9f22cfb6cec228eb"
+      }
+    }
+  },
+  "brown_planks_05": {
+    "source": "https://polyhaven.com/a/brown_planks_05",
+    "license": "CC0-1.0",
+    "files": {
+      "brown_planks_05_diff_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_planks_05/brown_planks_05_diff_1k.jpg",
+        "sha256": "2638ddb4b4ea9c3e7835a81cec9d2b41df30187aed6cf0cddee2e5042a39724a"
+      }
+    }
+  }
+}
