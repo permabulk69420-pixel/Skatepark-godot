@@ -611,7 +611,7 @@ def quarter_corner():
 # A round pool bowl let into the ground: 1.5 m deep, 7 m across at the coping, a 2 m radius transition into a flat bottom with a drain,
 # and a band of blue mosaic tiles under concrete pool coping (grindable all the way round), whose top is flush with the ground at the
 # origin. Nothing round it: whatever ground it is put in runs up to the coping. Its outline (the coping's outer edge) is a HOLE_ empty
-# the level reads to open its ground there (scripts/slab.gd).
+# the level reads to open its ground there, whatever level it is (scripts/ground_cut.gd).
 
 def bowl():
     piece = Piece('bowl')

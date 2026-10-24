@@ -536,8 +536,8 @@ func _process_build(dt: float) -> void:
 			hud.say("Removed", 1.2)
 		"kept":
 			hud.say("The house's own pieces can be moved, not removed", 2.0)
-	if level_id == Levels.SLAB and (happened == "placed" or happened == "removed"):
-		Slab.open_ground(level.root)   # (a bowl's hole follows it now; its collision when the level is loaded again)
+	if happened == "placed" or happened == "removed":
+		GroundCut.cut(level.root, level.ground, GroundCut.holes(level.root))   # (a bowl's hole follows it now; its collision on loading again)
 	if haptics and happened != "":
 		haptics.pulse(0.2 if happened == "turned" else 0.45, 25, "right")
 	if happened == "" and target != null and build.held == null and hud.message_time <= 0.0:

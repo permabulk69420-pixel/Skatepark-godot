@@ -15,6 +15,7 @@ var spawn_pos := Vector3(0.0, 0.045, 40.0)
 var spawn_heading := 0.0
 var lods: LodSet
 var markers: Array = []             # Node3D: the empties a level uses to say where things go (remote_spot, board_slot, ramp_pad, light)
+var ground: Array = []              # MeshInstance3D: what you see of the level itself (not of the build pieces in it): what GroundCut cuts
 
 
 # Loads `path` and adds it under `parent` (which must already be in the scene tree). Returns null if the file is missing.
@@ -56,6 +57,19 @@ static func from_root(root: Node3D, parent: Node3D, decals := "") -> LevelLoader
 				collision_meshes.append(node)
 			else:
 				level.render_meshes.append(node)
+	# Pieces that sit down in the ground (a bowl) open it where they stand, in what you see and in the collision.
+	var pieces := BuildPieces.find_all(level.root)
+	var own := func(node: Node) -> bool:
+		for piece in pieces:
+			if piece == node or piece.is_ancestor_of(node):
+				return false
+		return true
+	level.ground = level.render_meshes.filter(own)
+	var holes := GroundCut.holes(level.root)
+	if not holes.is_empty():
+		GroundCut.cut(level.root, level.ground, holes)
+		GroundCut.cut(level.root, collision_meshes.filter(own), holes)
+		collision_meshes.append_array(GroundCut.catch_floors(level.root, holes))
 	level.collision_bodies = SkateWorld.add_colliders(level.root, collision_meshes)
 	for mesh in collision_meshes:
 		mesh.queue_free()   # the collision shape has its own copy of the triangles; the mesh itself is never drawn

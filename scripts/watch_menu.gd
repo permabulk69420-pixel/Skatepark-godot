@@ -39,7 +39,6 @@ const BUILD_TABS := [
 	["Other", ["add_arcade", "add_bike"]],
 ]
 const BUILD_CONTROLS := ["build_resume", "build_done", "build_cancel", "build_reset"]
-const SLAB_ONLY := ["add_bowl", "add_foundry_bowl"]   # (pieces that sit down in the ground: only the Slab can open its ground for them)
 const TAB_HEIGHT := 40
 const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove one you added"
 
@@ -261,8 +260,6 @@ func _build(in_house: bool, title: String, has_goals: bool, can_build: bool) -> 
 			build_page.add_child(tiles)
 			build_tabs.append(tiles)
 			for action: String in BUILD_TABS[t][1]:
-				if in_house and action in SLAB_ONLY:
-					continue
 				var button := _make_tile(action)
 				button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				button.pressed.connect(func() -> void: chosen.emit(action))
