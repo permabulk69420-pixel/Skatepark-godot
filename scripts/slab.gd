@@ -1,6 +1,6 @@
 # The Slab: a blank square of concrete in an open field, to build a park on yourself. It is made in code and read by LevelLoader like an
 # imported file: the concrete and the field round it, their COL_ collision, the spawn, and whatever build mode has added (HubLayout).
-# A piece that sits down in the ground (a bowl: BuildPieces.SUNKEN) has a square cut out of the concrete for it.
+# A piece that sits down in the ground (a bowl) has its outline cut out of the concrete, so the concrete runs right up to its rim.
 class_name Slab
 extends RefCounted
 
@@ -27,7 +27,7 @@ static func build_root() -> Node3D:
 	root.add_child(spawn)
 	HubLayout.apply(root, HubLayout.read(Levels.SLAB))
 	_add_floor(root, "Slab_Concrete", floor_mesh(SIZE, _holes(root)), 0.0, _material(CONCRETE, SIZE / TILE))
-	_add_floor(root, "Slab_Field", floor_mesh(FIELD, [_square(Transform3D.IDENTITY, SIZE / 2.0)]), -FIELD_DROP, _material(GROUND, FIELD / FIELD_TILE))
+	_add_floor(root, "Slab_Field", floor_mesh(FIELD, [_square(Transform3D.IDENTITY, Vector2(SIZE, SIZE) / 2.0)]), -FIELD_DROP, _material(GROUND, FIELD / FIELD_TILE))
 	var catch_plane := PlaneMesh.new()
 	catch_plane.size = Vector2(SIZE, SIZE)
 	var catch_floor := MeshInstance3D.new()
@@ -47,23 +47,28 @@ static func open_ground(root: Node3D) -> void:
 		concrete.mesh = floor_mesh(SIZE, _holes(root))
 
 
-# The squares the sunken pieces under `root` need open, on the ground (x, z).
+# The outlines the sunken pieces under `root` need open, on the ground (x, z).
 static func _holes(root: Node3D) -> Array:
 	var holes: Array = []
-	var square := _square(Transform3D.IDENTITY, SIZE / 2.0)
+	var square := _square(Transform3D.IDENTITY, Vector2(SIZE, SIZE) / 2.0)
 	for piece in BuildPieces.find_all(root):
-		var half: float = BuildPieces.info(piece).get("sunken", 0.0)
-		if half <= 0.0 or piece.is_queued_for_deletion():
+		var outline: PackedVector2Array = BuildPieces.info(piece).get("sunken", PackedVector2Array())
+		if outline.is_empty() or piece.is_queued_for_deletion():
 			continue
 		var xf := piece.transform if not piece.is_inside_tree() else root.global_transform.affine_inverse() * piece.global_transform
-		for part in Geometry2D.intersect_polygons(_square(xf, half), square):   # (only the part on the concrete)
+		var placed := PackedVector2Array()
+		for p in outline:
+			var at: Vector3 = xf * Vector3(p.x, 0.0, p.y)
+			placed.append(Vector2(at.x, at.z))
+		for part in Geometry2D.intersect_polygons(placed, square):   # (only the part on the concrete)
 			holes.append(part)
 	return holes
 
 
-static func _square(xf: Transform3D, half: float) -> PackedVector2Array:
+# A rectangle on the ground, `half` (x, z) each way from the origin of `xf`.
+static func _square(xf: Transform3D, half: Vector2) -> PackedVector2Array:
 	var corners := PackedVector2Array()
-	for c in [Vector3(-half, 0, -half), Vector3(half, 0, -half), Vector3(half, 0, half), Vector3(-half, 0, half)]:
+	for c in [Vector3(-half.x, 0, -half.y), Vector3(half.x, 0, -half.y), Vector3(half.x, 0, half.y), Vector3(-half.x, 0, half.y)]:
 		var p: Vector3 = xf * c
 		corners.append(Vector2(p.x, p.z))
 	return corners

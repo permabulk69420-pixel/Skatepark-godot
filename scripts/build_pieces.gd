@@ -1,15 +1,21 @@
 # What build mode can move about the house and the yard: the half pipe, the couch, the rug and the dirt bike in the drive that come with
 # the house, and the pieces you can add (the arcade machine, a flat rail, more dirt bikes, the scanned funbox, and the quarter pipe and its
-# curved corner, manual pad, flat bar and bowl from tools/build_pieces.py). Each piece is one node with everything it needs under it (its look, its COL_ collision
+# curved corner, manual pad, flat bar and bowl from tools/build_pieces.py, and the Foundry's own obstacles, cut out of it by
+# tools/extract-foundry-pieces.mjs). Each piece is one node with everything it needs under it (its look, its COL_ collision
 # mesh, its grind_path markers), so moving that node moves all of it, and LevelLoader reads it like any other part of the house.
 class_name BuildPieces
 extends RefCounted
 
 const META := "build_piece"            # on each piece's node: {"id", "kind" ("" for the house's own), "name", "colliders", "frame_yaw",
                                        # "rideable" for a bike, "lift" for one whose origin is not at the bottom of its box, and "sunken"
-                                       # for one that sits down in the ground: the half size of the square the ground must leave open}
-const ADDABLE := ["arcade", "rail", "bike", "funbox", "quarter_pipe", "quarter_corner", "manual_pad", "flat_bar", "bowl"]
-const SUNKEN := {"bowl": 4.5}         # (only the Slab can open its ground for these: see Slab.floor_mesh)
+                                       # for one that sits down in the ground (a bowl): the outline (x, z) the ground must leave open for it}
+const ADDABLE := ["arcade", "rail", "bike", "funbox", "quarter_pipe", "quarter_corner", "manual_pad", "flat_bar", "bowl",
+	"seven_stairs", "five_stairs", "three_stairs", "long_ledge", "kink_funbox", "kicker", "curved_ledge", "mini_ramp", "big_quarter",
+	"concrete_quarter", "foundry_bowl"]
+# The Foundry's obstacles: one file, a node per piece (named by its kind).
+const FOUNDRY_PIECES := "res://assets/foundry_pieces/foundry_pieces.glb"
+const FOUNDRY := ["seven_stairs", "five_stairs", "three_stairs", "long_ledge", "kink_funbox", "kicker", "curved_ledge", "mini_ramp",
+	"big_quarter", "concrete_quarter", "foundry_bowl"]
 const DRIVEWAY_BIKE := Vector3(-12.5, 0.004, 4.0)   # the house's own bike stands in the drive, pointing out to the gate
 const ARCADE_SCENE := "res://assets/arcade/arcade_machine.glb"
 # The pieces that come as a model file with their own COL_ collision and grind lines in it.
@@ -38,6 +44,17 @@ static func caption(kind: String) -> String:
 		"quarter_pipe": return "Quarter pipe"
 		"quarter_corner": return "Quarter corner"
 		"bowl": return "Bowl"
+		"seven_stairs": return "7-stair set"
+		"five_stairs": return "5-stair set"
+		"three_stairs": return "3-stair set"
+		"long_ledge": return "Long ledge"
+		"kink_funbox": return "Kinked funbox"
+		"kicker": return "Kicker"
+		"curved_ledge": return "Curved ledge"
+		"mini_ramp": return "Mini ramp"
+		"big_quarter": return "Big quarter"
+		"concrete_quarter": return "Concrete quarter"
+		"foundry_bowl": return "Foundry bowl"
 		"manual_pad": return "Manual pad"
 		"flat_bar": return "Flat bar"
 	return kind
@@ -100,6 +117,7 @@ static func make(kind: String, id: String) -> Node3D:
 	var piece := Node3D.new()
 	piece.name = "Build_" + id
 	var colliders: Array = []
+	var sunken := PackedVector2Array()
 	match kind:
 		"arcade":
 			var model := (load(ARCADE_SCENE) as PackedScene).instantiate() as Node3D
@@ -112,8 +130,15 @@ static func make(kind: String, id: String) -> Node3D:
 			colliders.append(_build_rail(piece, id))
 		"bike":
 			piece.add_child(DirtBike.make_model())   # (no collision of its own: it is walked into to get on)
-		_ when SCENES.has(kind):
-			var model := (load(SCENES[kind]) as PackedScene).instantiate() as Node3D
+		_ when SCENES.has(kind) or kind in FOUNDRY:
+			var model: Node3D
+			if kind in FOUNDRY:
+				var all := (load(FOUNDRY_PIECES) as PackedScene).instantiate()
+				model = all.find_child(kind, true, false) as Node3D
+				model.get_parent().remove_child(model)
+				all.free()
+			else:
+				model = (load(SCENES[kind]) as PackedScene).instantiate() as Node3D
 			piece.add_child(model)
 			for collider: Node in model.find_children("COL_*", "MeshInstance3D", true, false):
 				collider.name = "COL_Build_" + id   # (each piece's collision body is named after it)
@@ -122,15 +147,28 @@ static func make(kind: String, id: String) -> Node3D:
 			for mesh: Node in model.find_children("ENV_*", "MeshInstance3D", true, false):
 				var lod = (mesh.get_meta("extras", {}) as Dictionary).get("lod")
 				(mesh as Node3D).visible = lod == null or int(lod.level) == 0   # (the far copies wait for the house's LODs to pick them)
+			sunken = _hole_outline(model)
 	_mark(piece, id, kind, caption(kind), colliders)
 	if kind == "bike":
 		(piece.get_meta(META) as Dictionary).rideable = true
 	elif kind == "funbox":
 		(piece.get_meta(META) as Dictionary).lift = 0.0   # (the scan's ground is at its origin; a few scraps of it hang below)
-	elif SUNKEN.has(kind):
+	elif not sunken.is_empty():
 		(piece.get_meta(META) as Dictionary).lift = 0.0   # (its rim is at its origin, level with the ground; the rest is below)
-		(piece.get_meta(META) as Dictionary).sunken = SUNKEN[kind]
+		(piece.get_meta(META) as Dictionary).sunken = sunken
+	elif kind in FOUNDRY:
+		(piece.get_meta(META) as Dictionary).lift = 0.0   # (each stands on the ground at its origin; a rail's foot dips just below)
 	return piece
+
+
+# The outline a piece that sits down in the ground needs left open (its HOLE_ empty: x, z pairs round its rim), or empty.
+static func _hole_outline(model: Node) -> PackedVector2Array:
+	var outline := PackedVector2Array()
+	for node in model.find_children("HOLE_*", "", true, false):
+		var points: Array = (node.get_meta("extras", {}) as Dictionary).get("points", [])
+		for i in range(0, points.size() - 1, 2):
+			outline.append(Vector2(points[i], points[i + 1]))
+	return outline
 
 
 # A round steel bar on two legs, grindable along its whole length and solid (the bar and its legs). Returns its collision mesh's name.

@@ -43,12 +43,12 @@
   "bowl": {
     "depth_m": 1.5,
     "coping_diameter_m": 7.0,
+    "outer_diameter_m": 7.6,
     "transition_radius_m": 2.0,
     "flat_bottom_diameter_m": 3.127,
-    "footprint_m": 9.0,
-    "meshes": 7,
-    "render_triangles": 11396,
-    "collision_triangles": 4368,
+    "meshes": 6,
+    "render_triangles": 11204,
+    "collision_triangles": 8736,
     "grind_paths": 1
   },
   "blender_version": "4.3.2"

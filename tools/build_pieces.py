@@ -200,6 +200,14 @@ class Piece:
         marker['points'] = [value for x, y, z in points for value in (x, z, -y)]
         self.markers.append(marker)
 
+    def hole(self, name, points):
+        """The outline (on the ground) the level must leave open for this piece."""
+        marker = bpy.data.objects.new(f'HOLE_{self.name}_{name}', None)
+        self.collection.objects.link(marker)
+        marker['role'] = 'ground_hole'
+        marker['points'] = [value for x, y, z in points for value in (x, -y)]   # (Godot's x and z)
+        self.markers.append(marker)
+
     def export(self):
         """Evaluated copies merged by material, the collision mesh and the grind empties, to assets/build_pieces/<name>.glb."""
         depsgraph = bpy.context.evaluated_depsgraph_get()
@@ -244,7 +252,7 @@ class Piece:
                                   export_image_format='AUTO', export_cameras=False, export_lights=False)
         triangles = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in merged)
         return {'meshes': len(merged), 'render_triangles': triangles, 'collision_triangles': len(self.collision) // 3,
-                'grind_paths': len(self.markers)}
+                'grind_paths': sum(1 for m in self.markers if m['role'] == 'grind_path')}
 
 
 def normal_of(points):
@@ -601,16 +609,18 @@ def quarter_corner():
 
 # ---- bowl -----------------------------------------------------------------------------------------------------------------
 # A round pool bowl let into the ground: 1.5 m deep, 7 m across at the coping, a 2 m radius transition into a flat bottom with a drain,
-# a band of blue mosaic tiles under concrete pool coping (grindable all the way round), and a concrete deck out to a 9 m square, its
-# top flush with the ground at the origin. The level cuts that square out of its own ground (scripts/slab.gd).
+# and a band of blue mosaic tiles under concrete pool coping (grindable all the way round), whose top is flush with the ground at the
+# origin. Nothing round it: whatever ground it is put in runs up to the coping. Its outline (the coping's outer edge) is a HOLE_ empty
+# the level reads to open its ground there (scripts/slab.gd).
 
 def bowl():
     piece = Piece('bowl')
-    HALF, RC, D, R = 4.5, 3.5, 1.5, 2.0
+    RC, D, R = 3.5, 1.5, 2.0
+    OUTER = RC + 0.30   # the coping's outer edge
     A = acos(1 - D / R)
     RB = RC - R * sin(A)
     BAND, TOP = -0.23, -0.08   # the tiles, below the coping
-    ARC, ARC_COL = 96, 48
+    ARC = 96
     angles = [2 * pi * j / ARC for j in range(ARC + 1)]   # (the last is the first again, for the texture's seam)
 
     def t_at(z):
@@ -638,7 +648,7 @@ def bowl():
 
     # Pool coping: a bullnose block whose round front overhangs the wall, its top flush with the deck.
     wall_r = RB + R * sin(t_at(TOP))
-    coping = [(RC + 0.30, 0.0), (RC, 0.0)] + [(RC + 0.04 * cos(f), -0.04 + 0.04 * sin(f))
+    coping = [(OUTER, 0.0), (RC, 0.0)] + [(RC + 0.04 * cos(f), -0.04 + 0.04 * sin(f))
                                               for f in (pi / 2 + pi * k / 12 for k in range(1, 13))] + [(wall_r, TOP)]
     clen = [0.0]
     for (ra, za), (rb, zb) in zip(coping, coping[1:]):
@@ -649,33 +659,29 @@ def bowl():
     for k in range(38):   # the joints between the coping blocks
         a = 2 * pi * (k + 0.5) / 38
         side = Vector((-sin(a), cos(a), 0)) * 0.002
-        p0, p1 = Vector(polar(RC, a, 0.0005)), Vector(polar(RC + 0.3, a, 0.0005))
+        p0, p1 = Vector(polar(RC, a, 0.0005)), Vector(polar(OUTER, a, 0.0005))
         piece.mesh('Coping joint', [p0 - side, p0 + side, p1 + side, p1 - side],
                    oriented([p0 - side, p0 + side, p1 + side, p1 - side], [(0, 1, 2, 3)], lambda c: (0, 0, 1)), mortar)
 
-    def square(a):
-        return HALF / max(abs(cos(a)), abs(sin(a)))
-    dv = []
-    for a in angles:
-        dv += [polar(RC + 0.30, a, 0.0), polar(square(a), a, 0.0)]
-    piece.mesh('Deck', dv, oriented(dv, [(2 * j, 2 * j + 1, 2 * j + 3, 2 * j + 2) for j in range(ARC)], lambda c: (0, 0, 1)), concrete)
     piece.cylinder('Drain', (0, 0, -D), (0, 0, -D + 0.004), 0.17, fixings, 24)
     piece.cylinder('Drain grate', (0, 0, -D), (0, 0, -D + 0.0055), 0.12, galvanized, 24)
 
-    # Collision: the bowl from its middle up to the lip, then the deck out to the square.
-    cangles = [2 * pi * j / ARC_COL for j in range(ARC_COL)]
+    # Collision: the bowl from its middle up to the lip, then the top of the coping out to its edge (on the same angles as the
+    # look and the outline, so nothing between them and the ground round it is left open).
+    cangles = angles[:-1]
     cprof = [(r, z) for r, z in profile] + [(RC, 0.0)]
-    for j in range(ARC_COL):
-        a, b = cangles[j], cangles[(j + 1) % ARC_COL]
+    for j in range(ARC):
+        a, b = cangles[j], cangles[(j + 1) % ARC]
         piece.collision.extend(facing([(0, 0, -D), polar(cprof[0][0], a, -D), polar(cprof[0][0], b, -D)], (0, 0, 1)))
         for (ra, za), (rb, zb) in zip(cprof, cprof[1:]):
             q = [polar(ra, a, za), polar(ra, b, za), polar(rb, b, zb), polar(rb, a, zb)]
             piece.quad(*facing(q, towards_axis_and_up(Vector(polar((ra + rb) / 2, (a + b) / 2, 0)))))
-        piece.quad_facing([polar(RC, a, 0), polar(RC, b, 0), polar(square(b), b, 0), polar(square(a), a, 0)], (0, 0, 1))
+        piece.quad_facing([polar(RC, a, 0), polar(RC, b, 0), polar(OUTER, b, 0), polar(OUTER, a, 0)], (0, 0, 1))
     piece.grind('Coping', [polar(RC, 2 * pi * k / 64, -0.04) for k in range(64)], 0.04, 'coping')
     piece.markers[-1]['closed'] = True
-    return piece, {'depth_m': D, 'coping_diameter_m': 2 * RC, 'transition_radius_m': R, 'flat_bottom_diameter_m': round(2 * RB, 3),
-                   'footprint_m': 2 * HALF}
+    piece.hole('Outline', [polar(OUTER, a, 0.0) for a in cangles])
+    return piece, {'depth_m': D, 'coping_diameter_m': 2 * RC, 'outer_diameter_m': 2 * OUTER, 'transition_radius_m': R,
+                   'flat_bottom_diameter_m': round(2 * RB, 3)}
 
 
 for build in (quarter_pipe, manual_pad, flat_bar, quarter_corner, bowl):

@@ -4,7 +4,7 @@
 class_name WatchMenu
 extends RefCounted
 
-signal chosen(action: String)   # "resume", "retry", "home", "build", "grind_hand", "manual_hand" or "exit", or one of BUILD_ACTIONS (the goals page is handled inside the menu)
+signal chosen(action: String)   # "resume", "retry", "home", "build", "grind_hand", "manual_hand" or "exit", or one of the build page's (BUILD_TABS, BUILD_CONTROLS; the goals page and the build tabs are handled inside the menu)
 signal hovered                    # the pointer moved onto a different button
 
 const FRAME := "res://assets/hud/menu_frame.glb"
@@ -25,13 +25,22 @@ const ROW_HEIGHT := 56
 const FONT := 32
 const BUILD_FONT := 26                  # the build page's buttons, two to a row
 const TILE_COLUMNS := 5
-const TILE_HEIGHT := 146
+const TILE_HEIGHT := 124
 const TILE_FONT := 18
 const TILE_WELL := Color(0.13, 0.18, 0.21, 1.0)   # behind a tile's picture
 const THUMBS := "res://assets/build_thumbs/%s.webp"   # a picture of each piece you can add, by its kind
-const TILE_NAMES := {"add_arcade": "Arcade"}   # (a shorter name where the piece's own does not fit under its picture)
-const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "add_funbox", "add_quarter_pipe", "add_quarter_corner", "add_manual_pad", "add_flat_bar", "add_bowl", "build_done", "build_cancel", "build_reset"]
-const SLAB_ONLY := ["add_bowl"]   # (pieces that sit down in the ground: only the Slab can open its ground for them)
+const TILE_NAMES := {"add_arcade": "Arcade", "add_concrete_quarter": "Concrete QP"}   # (a shorter name where the piece's own does not fit under its picture)
+# The build page's pieces, a tab of tiles each (at most two rows of TILE_COLUMNS), and its buttons under them.
+const BUILD_TABS := [
+	["Ramps", ["add_quarter_pipe", "add_quarter_corner", "add_big_quarter", "add_concrete_quarter", "add_mini_ramp", "add_kicker",
+		"add_funbox", "add_kink_funbox", "add_bowl", "add_foundry_bowl"]],
+	["Street", ["add_rail", "add_flat_bar", "add_manual_pad", "add_long_ledge", "add_curved_ledge", "add_three_stairs", "add_five_stairs",
+		"add_seven_stairs"]],
+	["Other", ["add_arcade", "add_bike"]],
+]
+const BUILD_CONTROLS := ["build_resume", "build_done", "build_cancel", "build_reset"]
+const SLAB_ONLY := ["add_bowl", "add_foundry_bowl"]   # (pieces that sit down in the ground: only the Slab can open its ground for them)
+const TAB_HEIGHT := 40
 const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove one you added"
 
 var is_open := false
@@ -47,6 +56,8 @@ var down_was := false
 var over: Button
 var main_page: VBoxContainer       # the buttons
 var goals_page: VBoxContainer      # the goals list (levels with goals), with a Back button
+var build_tabs: Array[GridContainer] = []   # the build page's tiles, a grid per tab (one shown at a time)
+var build_tab := 0
 var goals_rows: VBoxContainer
 var build_page: VBoxContainer      # build mode's page (the house and the Slab only)
 var building := false              # while building, the menu opens on that page
@@ -153,6 +164,19 @@ func set_goals(lines: Array) -> void:
 	(buttons["goals"] as Button).text = "%s   %d / %d" % [caption_for("goals"), done, lines.size()]
 
 
+# The build page's tab `t`: its tiles shown, and its tab marked with a line of colour under it.
+func _show_tab(t: int) -> void:
+	build_tab = t
+	for i in build_tabs.size():
+		build_tabs[i].visible = i == t
+		var tab: Button = buttons["tab_%d" % i]
+		var box := _row_box(ROW_LIT if i == t else ROW, 0)
+		box.border_width_bottom = 3 if i == t else 0
+		box.content_margin_left = 12
+		box.content_margin_right = 12
+		tab.add_theme_stylebox_override("normal", box)
+
+
 func _show_goals(show: bool) -> void:
 	main_page.visible = not show
 	goals_page.visible = show
@@ -221,18 +245,38 @@ func _build(in_house: bool, title: String, has_goals: bool, can_build: bool) -> 
 		build_page.visible = false
 		margin.add_child(build_page)
 		_add_heading(build_page, "Build")
-		var tiles := _grid(TILE_COLUMNS)     # the pieces you can add, each a picture with its name under it
-		build_page.add_child(tiles)
-		var rest := _grid(2)                 # and below them the rest, two to a row
+		var tab_row := HBoxContainer.new()   # the tabs: which pieces the tiles show
+		tab_row.add_theme_constant_override("separation", 10)
+		build_page.add_child(tab_row)
+		for t in BUILD_TABS.size():
+			var tab := _make_button(BUILD_TABS[t][0], BUILD_FONT)
+			tab.alignment = HORIZONTAL_ALIGNMENT_CENTER
+			tab.custom_minimum_size = Vector2(0, TAB_HEIGHT)
+			tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			tab.pressed.connect(func() -> void: _show_tab(t))
+			tab_row.add_child(tab)
+			buttons["tab_%d" % t] = tab
+			var tiles := _grid(TILE_COLUMNS)   # the pieces you can add, each a picture with its name under it
+			tiles.custom_minimum_size = Vector2(0, TILE_HEIGHT * 2 + 8)   # (every tab as tall, so the buttons under it stay put)
+			build_page.add_child(tiles)
+			build_tabs.append(tiles)
+			for action: String in BUILD_TABS[t][1]:
+				if in_house and action in SLAB_ONLY:
+					continue
+				var button := _make_tile(action)
+				button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				button.pressed.connect(func() -> void: chosen.emit(action))
+				tiles.add_child(button)
+				buttons[action] = button
+		var rest := _grid(2)                 # and under the tiles the rest, two to a row
 		build_page.add_child(rest)
-		for action: String in BUILD_ACTIONS:
-			if in_house and action in SLAB_ONLY:
-				continue
-			var button := _make_tile(action) if action.begins_with("add_") else _make_button(caption_for(action), BUILD_FONT)
+		for action: String in BUILD_CONTROLS:
+			var button := _make_button(caption_for(action), BUILD_FONT)
 			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			button.pressed.connect(func() -> void: chosen.emit(action))
-			(tiles if action.begins_with("add_") else rest).add_child(button)
+			rest.add_child(button)
 			buttons[action] = button
+		_show_tab(0)
 		var hint := Label.new()
 		hint.text = BUILD_HINT
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
