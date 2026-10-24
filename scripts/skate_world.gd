@@ -14,6 +14,7 @@ class Hit:
 
 var space: PhysicsDirectSpaceState3D
 var query := PhysicsRayQueryParameters3D.new()
+var shape_query := PhysicsShapeQueryParameters3D.new()
 
 
 func _init(p_space: PhysicsDirectSpaceState3D) -> void:
@@ -45,6 +46,27 @@ static func add_colliders(parent: Node3D, meshes: Array) -> Array[StaticBody3D]:
 		parent.add_child(body)
 		bodies.append(body)
 	return bodies
+
+
+# Moves `shape` (placed at `xf`) along `motion`: the first thing it would touch, or null. Sets `dist` (how far it got) and `normal`.
+func sweep(shape: Shape3D, xf: Transform3D, motion: Vector3, out: Hit) -> Hit:
+	shape_query.shape = shape
+	shape_query.transform = xf
+	shape_query.motion = motion
+	shape_query.exclude = query.exclude
+	shape_query.collide_with_areas = false
+	var fractions := space.cast_motion(shape_query)
+	if fractions.is_empty() or fractions[1] >= 1.0:
+		return null
+	shape_query.transform = Transform3D(xf.basis, xf.origin + motion * fractions[1])
+	shape_query.motion = Vector3.ZERO
+	var rest := space.get_rest_info(shape_query)
+	if rest.is_empty():
+		return null
+	out.dist = motion.length() * fractions[0]
+	out.normal = rest.normal
+	out.collider = instance_from_id(rest.collider_id) as Node
+	return out
 
 
 # First upward-facing surface below (x, from_y, z). Null when there is none, or the first thing hit faces away from up.

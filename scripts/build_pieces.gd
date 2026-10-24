@@ -103,7 +103,7 @@ static func make(kind: String, id: String) -> Node3D:
 			piece.add_child(collider)
 			colliders.append(collider.name)
 		"rail":
-			_build_rail(piece, id)
+			colliders.append(_build_rail(piece, id))
 		"bike":
 			piece.add_child(DirtBike.make_model())   # (no collision of its own: it is walked into to get on)
 		_ when SCENES.has(kind):
@@ -124,8 +124,8 @@ static func make(kind: String, id: String) -> Node3D:
 	return piece
 
 
-# A round steel bar on two legs, grindable along its whole length.
-static func _build_rail(piece: Node3D, id: String) -> void:
+# A round steel bar on two legs, grindable along its whole length and solid (the bar and its legs). Returns its collision mesh's name.
+static func _build_rail(piece: Node3D, id: String) -> String:
 	var steel := StandardMaterial3D.new()
 	steel.albedo_color = STEEL
 	steel.metallic = 0.8
@@ -146,16 +146,31 @@ static func _build_rail(piece: Node3D, id: String) -> void:
 	leg.rings = 1
 	var foot := BoxMesh.new()
 	foot.size = Vector3(0.12, 0.012, 0.3)
+	var bar_xf := Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3(0.0, centre, 0.0))
+	var solid := _faces(bar, bar_xf)
 	for side in [-1.0, 1.0]:
 		var x: float = side * (RAIL_LENGTH * 0.5 - RAIL_LEG_INSET)
-		_add_mesh(piece, "Rail_Leg", leg, steel, Transform3D(Basis.IDENTITY, Vector3(x, centre * 0.5, 0.0)))
+		var leg_xf := Transform3D(Basis.IDENTITY, Vector3(x, centre * 0.5, 0.0))
+		_add_mesh(piece, "Rail_Leg", leg, steel, leg_xf)
 		_add_mesh(piece, "Rail_Foot", foot, steel, Transform3D(Basis.IDENTITY, Vector3(x, 0.006, 0.0)))
+		solid.append_array(_faces(leg, leg_xf))
+	var collider := _collision_mesh("COL_Build_" + id, solid)
+	piece.add_child(collider)
 	var path := Node3D.new()
 	path.name = "PATH_Build_" + id
 	var half := RAIL_LENGTH * 0.5
 	path.set_meta("extras", {"role": "grind_path", "kind": "rail", "closed": false, "radius": RAIL_RADIUS,
 		"points": [-half, centre, 0.0, half, centre, 0.0]})
 	piece.add_child(path)
+	return collider.name
+
+
+# A mesh's triangles, placed by `xf`.
+static func _faces(mesh: Mesh, xf: Transform3D) -> PackedVector3Array:
+	var faces := mesh.get_faces()
+	for i in faces.size():
+		faces[i] = xf * faces[i]
+	return faces
 
 
 static func _add_mesh(parent: Node3D, node_name: String, mesh: Mesh, material: Material, xf: Transform3D) -> void:

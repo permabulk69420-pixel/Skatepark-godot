@@ -2,8 +2,8 @@
 Build mode pieces: a wooden quarter pipe, a concrete manual pad with steel edges and a square flat bar in green paint, textured with CC0 materials from
 Poly Haven (downloaded to art/build_pieces/downloads the first time; assets/build_pieces/source.json says where each file came from).
 Units: metres. Blender Z-up; exported Godot Y-up. Each piece stands on the ground at its origin, with the side you ride at facing
-Blender -Y (Godot +Z, the way build mode turns a new piece towards you). Each GLB holds the look, a COL_ collision mesh (none for the
-bar, as for the round flat rail) and its grind lines as PATH_ empties.
+Blender -Y (Godot +Z, the way build mode turns a new piece towards you). Each GLB holds the look, a COL_ collision mesh and its grind
+lines as PATH_ empties.
 """
 import bpy, bmesh, json, hashlib, math, os, ssl, urllib.request
 from pathlib import Path
@@ -405,9 +405,9 @@ def flat_bar():
     piece = Piece('flat_bar')
     L, TOP, T = 3.6, 0.38, 0.05
     hl, ht = L / 2, T / 2
-    piece.box('Bar', (-hl, -ht, TOP - T), (hl, ht, TOP), paint, 0.005)
+    piece.box('Bar', (-hl, -ht, TOP - T), (hl, ht, TOP), paint, 0.005, collide=True)
     for x in (-hl + 0.35, hl - 0.35):
-        piece.box('Leg', (x - 0.02, -0.02, 0.008), (x + 0.02, 0.02, TOP - T), paint, 0.003)
+        piece.box('Leg', (x - 0.02, -0.02, 0.008), (x + 0.02, 0.02, TOP - T), paint, 0.003, collide=True)
         piece.box('Foot plate', (x - 0.06, -0.15, 0.0), (x + 0.06, 0.15, 0.008), paint, 0.002)
         for dx in (-0.035, 0.035):
             for dy in (-0.11, 0.11):

@@ -65,6 +65,9 @@ class Tuning:
 	const maxSlopeTan := 1.7  # plus this × horizontal travel (≈60°) beyond what the board's own climb explains
 	const steepNormalY := 0.55  # surfaces steeper than this are tracked with rays along the board's normal, not straight down
 	const wallProbe := 0.33  # how far ahead of the board centre a wall is noticed
+	const shinsFrom := 0.16  # the rider's shins and the board's nose are felt from this far above the surface…
+	const shinsTo := 0.6  # …up to this: something with open space under it (a rail) is a wall there too
+	const shinsWidth := 0.24  # and this wide
 	const edgeGrace := 0.3  # seconds after rolling off an edge when the trailing wheels are ignored
 	const freezeBail := 0.35  # seconds airborne without moving at all (wedged in the geometry) before it bails out
 	const popWheelFree := 0.14  # seconds after an ollie when only the middle of the board can land it (the wheels are still inside a slope ahead)

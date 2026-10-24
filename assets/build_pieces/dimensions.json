@@ -25,7 +25,7 @@
     "tube_mm": 50,
     "meshes": 3,
     "render_triangles": 1052,
-    "collision_triangles": 0,
+    "collision_triangles": 30,
     "grind_paths": 1
   },
   "blender_version": "4.3.2"

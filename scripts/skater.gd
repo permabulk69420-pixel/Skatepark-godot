@@ -226,6 +226,7 @@ var wheels := Wheels.new()
 
 var _hit := SkateWorld.Hit.new()
 var _cast := SkateWorld.Hit.new()
+var _shins := BoxShape3D.new()
 
 
 # The heading laid onto a surface with normal n: turned with the surface (by the rotation that takes straight up to n), not flattened
@@ -693,6 +694,10 @@ func move_on_ground(np_in: Vector3, h: float) -> void:
 		var a := pos + n * 0.1
 		var far := T.wallProbe + total_speed * h
 		var c := world.cast(a, sd, far, _cast)
+		if c != null and c.normal.dot(n) < T.wallCos:
+			hit_wall(c)
+			return
+		c = _shins_hit(n, sd, far)
 		if c != null and c.normal.dot(n) < T.wallCos:
 			hit_wall(c)
 			return
@@ -1396,6 +1401,17 @@ func land(has_normal: bool, normal: Vector3) -> void:
 
 
 # ----- walls -----------------------------------------------------------------------------------------------
+# The rider's shins and the board's nose, swept `far` along `sd`: what they would run into above the reach of the low wall probe.
+func _shins_hit(n: Vector3, sd: Vector3, far: float) -> SkateWorld.Hit:
+	var ahead := sd - n * sd.dot(n)   # (along the surface)
+	if ahead.length_squared() < 1e-6:
+		return null
+	ahead = ahead.normalized()
+	_shins.size = Vector3(T.shinsWidth, T.shinsTo - T.shinsFrom, 0.04)
+	var xf := Transform3D(Basis(n.cross(ahead).normalized(), n, -ahead), pos + n * (T.shinsFrom + T.shinsTo) * 0.5)
+	return world.sweep(_shins, xf, sd * far, _cast)
+
+
 # Throw away the part of the motion that goes into the surface. `c` is the probe hit, or null when we only know we are blocked.
 func hit_wall(c: SkateWorld.Hit) -> void:
 	var total := vel.length()
