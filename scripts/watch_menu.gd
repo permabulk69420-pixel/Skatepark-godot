@@ -23,6 +23,12 @@ const TEXT := Color("e9eef0")
 const TEXT_DIM := Color("7f9298")
 const ROW_HEIGHT := 56
 const FONT := 32
+const BUILD_FONT := 26                  # the build page's buttons, two to a row
+const TILE_COLUMNS := 4
+const TILE_HEIGHT := 230
+const TILE_FONT := 22
+const TILE_WELL := Color(0.13, 0.18, 0.21, 1.0)   # behind a tile's picture
+const THUMBS := "res://assets/build_thumbs/%s.webp"   # a picture of each piece you can add, by its kind
 const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "add_funbox", "build_done", "build_cancel", "build_reset"]
 const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove one you added"
 
@@ -205,20 +211,15 @@ func _build(in_house: bool, title: String, has_goals: bool) -> Control:
 		build_page.visible = false
 		margin.add_child(build_page)
 		_add_heading(build_page, "Build")
-		var adds := GridContainer.new()   # (the "Add …" buttons two to a row, so the page still fits the frame)
-		adds.columns = 2
-		adds.add_theme_constant_override("h_separation", 8)
-		adds.add_theme_constant_override("v_separation", 8)
+		var tiles := _grid(TILE_COLUMNS)     # the pieces you can add, each a picture with its name under it
+		build_page.add_child(tiles)
+		var rest := _grid(2)                 # and below them the rest, two to a row
+		build_page.add_child(rest)
 		for action: String in BUILD_ACTIONS:
-			var button := _make_button(caption_for(action))
+			var button := _make_tile(action) if action.begins_with("add_") else _make_button(caption_for(action), BUILD_FONT)
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			button.pressed.connect(func() -> void: chosen.emit(action))
-			if action.begins_with("add_"):
-				button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				if adds.get_parent() == null:
-					build_page.add_child(adds)
-				adds.add_child(button)
-			else:
-				build_page.add_child(button)
+			(tiles if action.begins_with("add_") else rest).add_child(button)
 			buttons[action] = button
 		var hint := Label.new()
 		hint.text = BUILD_HINT
@@ -247,13 +248,13 @@ func _add_heading(parent: Control, text: String) -> void:
 
 
 # A menu button: a flat dark row with the text on the left; the one the pointer is on gets a lighter fill and a bar of colour on its left.
-func _make_button(text: String) -> Button:
+func _make_button(text: String, font := FONT) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.custom_minimum_size = Vector2(0, ROW_HEIGHT)
 	button.focus_mode = Control.FOCUS_NONE if vr else Control.FOCUS_ALL
-	button.add_theme_font_size_override("font_size", FONT)
+	button.add_theme_font_size_override("font_size", font)
 	button.add_theme_color_override("font_color", TEXT)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
@@ -264,13 +265,55 @@ func _make_button(text: String) -> Button:
 	button.add_theme_stylebox_override("hover", lit)
 	button.add_theme_stylebox_override("focus", lit)
 	button.add_theme_stylebox_override("pressed", _row_box(Color(0.16, 0.3, 0.32), 6))
+	_track_pointer(button)
+	return button
+
+
+# A build page tile: the piece's picture (assets/build_thumbs/<kind>.webp) on a lighter well, its name under it. The one the pointer is
+# on gets a lighter fill and an edge of colour all round.
+func _make_tile(action: String) -> Button:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(0, TILE_HEIGHT)
+	button.focus_mode = Control.FOCUS_NONE if vr else Control.FOCUS_ALL
+	button.add_theme_stylebox_override("normal", _tile_box(ROW, 0))
+	button.add_theme_stylebox_override("hover", _tile_box(ROW_LIT, 3))
+	button.add_theme_stylebox_override("focus", _tile_box(ROW_LIT, 3))
+	button.add_theme_stylebox_override("pressed", _tile_box(Color(0.16, 0.3, 0.32), 3))
+	var column := VBoxContainer.new()
+	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
+	column.add_theme_constant_override("separation", 6)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(column)
+	var well := PanelContainer.new()
+	well.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	well.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	well.add_theme_stylebox_override("panel", _box(TILE_WELL, TILE_WELL, 0, 10))
+	column.add_child(well)
+	var path := THUMBS % action.trim_prefix("add_")
+	if ResourceLoader.exists(path):
+		var picture := TextureRect.new()
+		picture.texture = load(path) as Texture2D
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		well.add_child(picture)
+	var label := Label.new()
+	label.text = BuildPieces.caption(action.trim_prefix("add_"))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", TILE_FONT)
+	label.add_theme_color_override("font_color", TEXT)
+	column.add_child(label)
+	_track_pointer(button)
+	return button
+
+
+func _track_pointer(button: Button) -> void:
 	button.mouse_entered.connect(func() -> void:
 		over = button
 		hovered.emit())
 	button.mouse_exited.connect(func() -> void:
 		if over == button:
 			over = null)
-	return button
 
 
 static func _row_box(fill: Color, bar: int) -> StyleBoxFlat:
@@ -282,6 +325,20 @@ static func _row_box(fill: Color, bar: int) -> StyleBoxFlat:
 	box.content_margin_left = 28
 	box.content_margin_right = 28
 	return box
+
+
+static func _tile_box(fill: Color, edge: int) -> StyleBoxFlat:
+	var box := _box(fill, ACCENT, edge, 14)
+	box.set_content_margin_all(0)
+	return box
+
+
+static func _grid(columns: int) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = columns
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 8)
+	return grid
 
 
 static func _box(fill: Color, edge: Color, border: int, radius := 18) -> StyleBoxFlat:
