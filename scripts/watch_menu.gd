@@ -25,11 +25,11 @@ const ROW_HEIGHT := 56
 const FONT := 32
 const BUILD_FONT := 26                  # the build page's buttons, two to a row
 const TILE_COLUMNS := 4
-const TILE_HEIGHT := 230
+const TILE_HEIGHT := 146
 const TILE_FONT := 22
 const TILE_WELL := Color(0.13, 0.18, 0.21, 1.0)   # behind a tile's picture
 const THUMBS := "res://assets/build_thumbs/%s.webp"   # a picture of each piece you can add, by its kind
-const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "add_funbox", "build_done", "build_cancel", "build_reset"]
+const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "add_funbox", "add_quarter_pipe", "add_manual_pad", "add_flat_bar", "build_done", "build_cancel", "build_reset"]
 const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove one you added"
 
 var is_open := false
@@ -95,6 +95,9 @@ static func caption_for(action: String) -> String:
 		"add_rail": return "Add a flat rail"
 		"add_bike": return "Add a dirt bike"
 		"add_funbox": return "Add the funbox"
+		"add_quarter_pipe": return "Add a quarter pipe"
+		"add_manual_pad": return "Add a manual pad"
+		"add_flat_bar": return "Add a flat bar"
 		"build_done": return "Done: save it"
 		"build_cancel": return "Cancel: undo the changes"
 		"build_reset": return "Put everything back"

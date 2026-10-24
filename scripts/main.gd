@@ -468,7 +468,7 @@ func _on_menu_chosen(action: String) -> void:
 			_start_building()
 		"build_resume":
 			_set_menu(false)
-		"add_arcade", "add_rail", "add_bike", "add_funbox":
+		"add_arcade", "add_rail", "add_bike", "add_funbox", "add_quarter_pipe", "add_manual_pad", "add_flat_bar":
 			_set_menu(false)
 			var facing := foot.facing()
 			build.add(action.substr(4), foot.body() + Vector3(-sin(facing), 0.0, -cos(facing)) * 1.5, facing)

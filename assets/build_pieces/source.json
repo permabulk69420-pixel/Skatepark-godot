@@ -1,0 +1,92 @@
+{
+  "plywood": {
+    "source": "https://polyhaven.com/a/plywood",
+    "license": "CC0-1.0",
+    "files": {
+      "plywood_diff_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/plywood/plywood_diff_1k.jpg",
+        "sha256": "800905650fc6cab2fe7c77c41851f8ea89669f1287ad5ce67c48f435654c0af8"
+      },
+      "plywood_nor_gl_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/plywood/plywood_nor_gl_1k.jpg",
+        "sha256": "a0d8459eb2586435790225440319586775c9b7dff8441062e077501fd0811e53"
+      },
+      "plywood_arm_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/plywood/plywood_arm_1k.jpg",
+        "sha256": "62b7b6290005dc2d2fc8c207a7ae0abb06961f27c2525955638cea711d6d9d72"
+      }
+    }
+  },
+  "oriented_strand_board": {
+    "source": "https://polyhaven.com/a/oriented_strand_board",
+    "license": "CC0-1.0",
+    "files": {
+      "oriented_strand_board_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oriented_strand_board/oriented_strand_board_diff_2k.jpg",
+        "sha256": "88c17de0b8e445a7ae6eb51b20ef95fc31a4430c6df1fdda9f22cfb6cec228eb"
+      },
+      "oriented_strand_board_nor_gl_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oriented_strand_board/oriented_strand_board_nor_gl_2k.jpg",
+        "sha256": "a23832ea5892a0bf44da2f36bd37bebc675e83e2fe2cf48c8dd3007dd9660804"
+      },
+      "oriented_strand_board_arm_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oriented_strand_board/oriented_strand_board_arm_2k.jpg",
+        "sha256": "518263fefaaaa0ffe3cee5184538f2d101b2a678de3d30d99d3e209092488c1e"
+      }
+    }
+  },
+  "brushed_concrete": {
+    "source": "https://polyhaven.com/a/brushed_concrete",
+    "license": "CC0-1.0",
+    "files": {
+      "brushed_concrete_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete/brushed_concrete_diff_2k.jpg",
+        "sha256": "5af96604b20e29862b449d86981b196b18ba5cbcb8659c451dd8976411a36130"
+      },
+      "brushed_concrete_nor_gl_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete/brushed_concrete_nor_gl_2k.jpg",
+        "sha256": "3d1f1c7a5f20a5f7a15f3bc5c5f58c0fdcaf49e71e65a5f17e086b551895c00c"
+      },
+      "brushed_concrete_arm_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete/brushed_concrete_arm_2k.jpg",
+        "sha256": "87e7ee823a78d6d85dc98cd5d1b5a7d4e694429ef4a01f3947b7e4b8a8d284b2"
+      }
+    }
+  },
+  "concrete_wall_008": {
+    "source": "https://polyhaven.com/a/concrete_wall_008",
+    "license": "CC0-1.0",
+    "files": {
+      "concrete_wall_008_diff_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_008/concrete_wall_008_diff_2k.jpg",
+        "sha256": "a3eb7b24c5cf6f113ec9b3be8ab1715360ef3cbf4b1699979414e44341f54846"
+      },
+      "concrete_wall_008_nor_gl_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_008/concrete_wall_008_nor_gl_2k.jpg",
+        "sha256": "58ce9b818772d37fe16e1154ea0278f3ab423ed34073357e786ef44f9ceef052"
+      },
+      "concrete_wall_008_arm_2k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_008/concrete_wall_008_arm_2k.jpg",
+        "sha256": "98e5e8f447e2ce92bb0349cb0c8265ca0b67c6fe6f6a1be31c4be8e986aa47c7"
+      }
+    }
+  },
+  "green_metal_rust": {
+    "source": "https://polyhaven.com/a/green_metal_rust",
+    "license": "CC0-1.0",
+    "files": {
+      "green_metal_rust_diff_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_diff_1k.jpg",
+        "sha256": "4509ab0cb1cf6bf9b9f970450a41f83ebd9bff178006deae568ff34b404856fc"
+      },
+      "green_metal_rust_nor_gl_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_nor_gl_1k.jpg",
+        "sha256": "8ecb28b0ea4026b740ce492e3f606f61a76bdce1f78cb2e29287bf9a56c54a80"
+      },
+      "green_metal_rust_arm_1k.jpg": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_arm_1k.jpg",
+        "sha256": "c1a48da0c5bba8f490497bbedadf4cb21d5387de8b3d49988c065e4b16805434"
+      }
+    }
+  }
+}

@@ -1,15 +1,22 @@
 # What build mode can move about the house and the yard: the half pipe, the couch, the rug and the dirt bike in the drive that come with
-# the house, and the pieces you can add (the arcade machine, a flat rail, more dirt bikes, the scanned funbox). Each piece is one node with everything it needs under it (its look, its COL_ collision
+# the house, and the pieces you can add (the arcade machine, a flat rail, more dirt bikes, the scanned funbox, and the quarter pipe, manual
+# pad and flat bar from tools/build_pieces.py). Each piece is one node with everything it needs under it (its look, its COL_ collision
 # mesh, its grind_path markers), so moving that node moves all of it, and LevelLoader reads it like any other part of the house.
 class_name BuildPieces
 extends RefCounted
 
 const META := "build_piece"            # on each piece's node: {"id", "kind" ("" for the house's own), "name", "colliders", "frame_yaw",
                                        # "rideable" for a bike, and "lift" for one whose origin is not at the bottom of its box}
-const ADDABLE := ["arcade", "rail", "bike", "funbox"]
+const ADDABLE := ["arcade", "rail", "bike", "funbox", "quarter_pipe", "manual_pad", "flat_bar"]
 const DRIVEWAY_BIKE := Vector3(-12.5, 0.004, 4.0)   # the house's own bike stands in the drive, pointing out to the gate
 const ARCADE_SCENE := "res://assets/arcade/arcade_machine.glb"
-const FUNBOX_SCENE := "res://assets/funbox/funbox.glb"   # the web build's Funbox scan (matousekfoto, CC-BY 4.0) without its slab and spawn
+# The pieces that come as a model file with their own COL_ collision and grind lines in it.
+const SCENES := {
+	"funbox": "res://assets/funbox/funbox.glb",   # the web build's Funbox scan (matousekfoto, CC-BY 4.0) without its slab and spawn
+	"quarter_pipe": "res://assets/build_pieces/quarter_pipe.glb",
+	"manual_pad": "res://assets/build_pieces/manual_pad.glb",
+	"flat_bar": "res://assets/build_pieces/flat_bar.glb",
+}
 const RAIL_LENGTH := 3.0
 const RAIL_HEIGHT := 0.33              # metres from the ground to the top of the bar
 const RAIL_RADIUS := 0.025
@@ -24,6 +31,9 @@ static func caption(kind: String) -> String:
 		"rail": return "Flat rail"
 		"bike": return "Dirt bike"
 		"funbox": return "Funbox"
+		"quarter_pipe": return "Quarter pipe"
+		"manual_pad": return "Manual pad"
+		"flat_bar": return "Flat bar"
 	return kind
 
 
@@ -96,13 +106,13 @@ static func make(kind: String, id: String) -> Node3D:
 			_build_rail(piece, id)
 		"bike":
 			piece.add_child(DirtBike.make_model())   # (no collision of its own: it is walked into to get on)
-		"funbox":
-			var model := (load(FUNBOX_SCENE) as PackedScene).instantiate() as Node3D
+		_ when SCENES.has(kind):
+			var model := (load(SCENES[kind]) as PackedScene).instantiate() as Node3D
 			piece.add_child(model)
-			var collider := model.find_child("COL_Funbox", true, false) as MeshInstance3D
-			collider.name = "COL_Build_" + id   # (each funbox's collision body is named after it)
-			collider.visible = false            # (never drawn, as for the arcade machine's)
-			colliders.append(collider.name)
+			for collider: Node in model.find_children("COL_*", "MeshInstance3D", true, false):
+				collider.name = "COL_Build_" + id   # (each piece's collision body is named after it)
+				(collider as Node3D).visible = false   # (never drawn, as for the arcade machine's)
+				colliders.append(collider.name)
 			for mesh: Node in model.find_children("ENV_*", "MeshInstance3D", true, false):
 				var lod = (mesh.get_meta("extras", {}) as Dictionary).get("lod")
 				(mesh as Node3D).visible = lod == null or int(lod.level) == 0   # (the far copies wait for the house's LODs to pick them)

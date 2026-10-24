@@ -1,0 +1,32 @@
+{
+  "quarter_pipe": {
+    "height_m": 1.2,
+    "width_m": 2.44,
+    "radius_m": 1.8,
+    "deck_m": 0.61,
+    "depth_m": 2.467,
+    "meshes": 5,
+    "render_triangles": 2988,
+    "collision_triangles": 296,
+    "grind_paths": 1
+  },
+  "manual_pad": {
+    "length_m": 2.4,
+    "width_m": 1.2,
+    "height_m": 0.3,
+    "meshes": 4,
+    "render_triangles": 480,
+    "collision_triangles": 10,
+    "grind_paths": 4
+  },
+  "flat_bar": {
+    "length_m": 3.6,
+    "top_height_m": 0.38,
+    "tube_mm": 50,
+    "meshes": 3,
+    "render_triangles": 1052,
+    "collision_triangles": 0,
+    "grind_paths": 1
+  },
+  "blender_version": "4.3.2"
+}
