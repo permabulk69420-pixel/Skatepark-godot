@@ -468,7 +468,7 @@ func _on_menu_chosen(action: String) -> void:
 			_start_building()
 		"build_resume":
 			_set_menu(false)
-		"add_arcade", "add_rail", "add_bike", "add_funbox", "add_quarter_pipe", "add_manual_pad", "add_flat_bar":
+		"add_arcade", "add_rail", "add_bike", "add_funbox", "add_quarter_pipe", "add_quarter_corner", "add_manual_pad", "add_flat_bar", "add_bowl":
 			_set_menu(false)
 			var facing := foot.facing()
 			build.add(action.substr(4), foot.body() + Vector3(-sin(facing), 0.0, -cos(facing)) * 1.5, facing)
@@ -536,6 +536,8 @@ func _process_build(dt: float) -> void:
 			hud.say("Removed", 1.2)
 		"kept":
 			hud.say("The house's own pieces can be moved, not removed", 2.0)
+	if level_id == Levels.SLAB and (happened == "placed" or happened == "removed"):
+		Slab.open_ground(level.root)   # (a bowl's hole follows it now; its collision when the level is loaded again)
 	if haptics and happened != "":
 		haptics.pulse(0.2 if happened == "turned" else 0.45, 25, "right")
 	if happened == "" and target != null and build.held == null and hud.message_time <= 0.0:

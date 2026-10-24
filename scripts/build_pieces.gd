@@ -1,19 +1,23 @@
 # What build mode can move about the house and the yard: the half pipe, the couch, the rug and the dirt bike in the drive that come with
-# the house, and the pieces you can add (the arcade machine, a flat rail, more dirt bikes, the scanned funbox, and the quarter pipe, manual
-# pad and flat bar from tools/build_pieces.py). Each piece is one node with everything it needs under it (its look, its COL_ collision
+# the house, and the pieces you can add (the arcade machine, a flat rail, more dirt bikes, the scanned funbox, and the quarter pipe and its
+# curved corner, manual pad, flat bar and bowl from tools/build_pieces.py). Each piece is one node with everything it needs under it (its look, its COL_ collision
 # mesh, its grind_path markers), so moving that node moves all of it, and LevelLoader reads it like any other part of the house.
 class_name BuildPieces
 extends RefCounted
 
 const META := "build_piece"            # on each piece's node: {"id", "kind" ("" for the house's own), "name", "colliders", "frame_yaw",
-                                       # "rideable" for a bike, and "lift" for one whose origin is not at the bottom of its box}
-const ADDABLE := ["arcade", "rail", "bike", "funbox", "quarter_pipe", "manual_pad", "flat_bar"]
+                                       # "rideable" for a bike, "lift" for one whose origin is not at the bottom of its box, and "sunken"
+                                       # for one that sits down in the ground: the half size of the square the ground must leave open}
+const ADDABLE := ["arcade", "rail", "bike", "funbox", "quarter_pipe", "quarter_corner", "manual_pad", "flat_bar", "bowl"]
+const SUNKEN := {"bowl": 4.5}         # (only the Slab can open its ground for these: see Slab.floor_mesh)
 const DRIVEWAY_BIKE := Vector3(-12.5, 0.004, 4.0)   # the house's own bike stands in the drive, pointing out to the gate
 const ARCADE_SCENE := "res://assets/arcade/arcade_machine.glb"
 # The pieces that come as a model file with their own COL_ collision and grind lines in it.
 const SCENES := {
 	"funbox": "res://assets/funbox/funbox.glb",   # the web build's Funbox scan (matousekfoto, CC-BY 4.0) without its slab and spawn
 	"quarter_pipe": "res://assets/build_pieces/quarter_pipe.glb",
+	"quarter_corner": "res://assets/build_pieces/quarter_corner.glb",   # (its origin is the middle of the circle eight of them make)
+	"bowl": "res://assets/build_pieces/bowl.glb",
 	"manual_pad": "res://assets/build_pieces/manual_pad.glb",
 	"flat_bar": "res://assets/build_pieces/flat_bar.glb",
 }
@@ -32,6 +36,8 @@ static func caption(kind: String) -> String:
 		"bike": return "Dirt bike"
 		"funbox": return "Funbox"
 		"quarter_pipe": return "Quarter pipe"
+		"quarter_corner": return "Quarter corner"
+		"bowl": return "Bowl"
 		"manual_pad": return "Manual pad"
 		"flat_bar": return "Flat bar"
 	return kind
@@ -121,6 +127,9 @@ static func make(kind: String, id: String) -> Node3D:
 		(piece.get_meta(META) as Dictionary).rideable = true
 	elif kind == "funbox":
 		(piece.get_meta(META) as Dictionary).lift = 0.0   # (the scan's ground is at its origin; a few scraps of it hang below)
+	elif SUNKEN.has(kind):
+		(piece.get_meta(META) as Dictionary).lift = 0.0   # (its rim is at its origin, level with the ground; the rest is below)
+		(piece.get_meta(META) as Dictionary).sunken = SUNKEN[kind]
 	return piece
 
 

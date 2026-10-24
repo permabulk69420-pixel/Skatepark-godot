@@ -24,12 +24,14 @@ const TEXT_DIM := Color("7f9298")
 const ROW_HEIGHT := 56
 const FONT := 32
 const BUILD_FONT := 26                  # the build page's buttons, two to a row
-const TILE_COLUMNS := 4
+const TILE_COLUMNS := 5
 const TILE_HEIGHT := 146
-const TILE_FONT := 22
+const TILE_FONT := 18
 const TILE_WELL := Color(0.13, 0.18, 0.21, 1.0)   # behind a tile's picture
 const THUMBS := "res://assets/build_thumbs/%s.webp"   # a picture of each piece you can add, by its kind
-const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "add_funbox", "add_quarter_pipe", "add_manual_pad", "add_flat_bar", "build_done", "build_cancel", "build_reset"]
+const TILE_NAMES := {"add_arcade": "Arcade"}   # (a shorter name where the piece's own does not fit under its picture)
+const BUILD_ACTIONS := ["build_resume", "add_arcade", "add_rail", "add_bike", "add_funbox", "add_quarter_pipe", "add_quarter_corner", "add_manual_pad", "add_flat_bar", "add_bowl", "build_done", "build_cancel", "build_reset"]
+const SLAB_ONLY := ["add_bowl"]   # (pieces that sit down in the ground: only the Slab can open its ground for them)
 const BUILD_HINT := "Trigger: pick up / put down · stick: turn 15° · hold grip: fine control · B: remove one you added"
 
 var is_open := false
@@ -96,6 +98,8 @@ static func caption_for(action: String) -> String:
 		"add_bike": return "Add a dirt bike"
 		"add_funbox": return "Add the funbox"
 		"add_quarter_pipe": return "Add a quarter pipe"
+		"add_quarter_corner": return "Add a quarter pipe corner"
+		"add_bowl": return "Add a bowl"
 		"add_manual_pad": return "Add a manual pad"
 		"add_flat_bar": return "Add a flat bar"
 		"build_done": return "Done: save it"
@@ -222,6 +226,8 @@ func _build(in_house: bool, title: String, has_goals: bool, can_build: bool) -> 
 		var rest := _grid(2)                 # and below them the rest, two to a row
 		build_page.add_child(rest)
 		for action: String in BUILD_ACTIONS:
+			if in_house and action in SLAB_ONLY:
+				continue
 			var button := _make_tile(action) if action.begins_with("add_") else _make_button(caption_for(action), BUILD_FONT)
 			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			button.pressed.connect(func() -> void: chosen.emit(action))
@@ -304,8 +310,9 @@ func _make_tile(action: String) -> Button:
 		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		well.add_child(picture)
 	var label := Label.new()
-	label.text = BuildPieces.caption(action.trim_prefix("add_"))
+	label.text = TILE_NAMES.get(action, BuildPieces.caption(action.trim_prefix("add_")))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS   # (so a long name never widens its column)
 	label.add_theme_font_size_override("font_size", TILE_FONT)
 	label.add_theme_color_override("font_color", TEXT)
 	column.add_child(label)

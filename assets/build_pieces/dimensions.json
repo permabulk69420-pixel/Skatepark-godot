@@ -5,7 +5,7 @@
     "radius_m": 1.8,
     "deck_m": 0.61,
     "depth_m": 2.467,
-    "meshes": 5,
+    "meshes": 6,
     "render_triangles": 2988,
     "collision_triangles": 296,
     "grind_paths": 1
@@ -26,6 +26,29 @@
     "meshes": 3,
     "render_triangles": 1052,
     "collision_triangles": 30,
+    "grind_paths": 1
+  },
+  "quarter_corner": {
+    "height_m": 1.2,
+    "radius_m": 1.8,
+    "deck_m": 0.61,
+    "ground_circle_radius_m": 2.5,
+    "coping_circle_radius_m": 4.201,
+    "sweep_degrees": 45,
+    "meshes": 5,
+    "render_triangles": 3932,
+    "collision_triangles": 1396,
+    "grind_paths": 1
+  },
+  "bowl": {
+    "depth_m": 1.5,
+    "coping_diameter_m": 7.0,
+    "transition_radius_m": 2.0,
+    "flat_bottom_diameter_m": 3.127,
+    "footprint_m": 9.0,
+    "meshes": 7,
+    "render_triangles": 11396,
+    "collision_triangles": 4368,
     "grind_paths": 1
   },
   "blender_version": "4.3.2"
